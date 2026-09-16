@@ -20,5 +20,12 @@ node_modules/
 # Test coverage
 coverage/
 
-# Temporary files
-tmp/
+# Temporary files at the repository root only. Each app's own .gitignore
+# governs its own tmp/ (apps/api tracks tmp/.keep, for example).
+/tmp/
+
+# Private keys, at any depth. apps/api/.gitignore also ignores
+# /config/*.key; the duplication is deliberate. An ignore rule only protects you
+# while the file that declares it is on the branch you have checked out, and
+# this one is on every branch cut from main.
+*.key
