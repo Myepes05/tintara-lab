@@ -1,6 +1,6 @@
 # Chapter 02 — The Rails API skeleton: RSpec, RuboCop and CI
 
-**Task:** Feature 2 · **Decisions:** D-028, D-031, D-033, D-042, D-050, D-052, D-055, D-058, D-062, D-063 · **Code:** PR [#1](https://github.com/Myepes05/tintara-lab/pull/1)
+**Task:** Feature 2 · **Decisions:** D-028, D-031, D-033, D-042, D-050, D-052, D-055, D-058, D-062, D-063, D-066 · **Code:** PR [#1](https://github.com/Myepes05/tintara-lab/pull/1)
 
 ## 1. What we are building in this chapter
 
@@ -25,27 +25,40 @@ One endpoint sounds like very little for a chapter this long. It is the point: t
 
 The repository exactly as chapter 01 left it: one commit on `main`, a working `docker compose` Postgres, root scaffolding, and an `apps/` directory containing only `.gitkeep`. No Ruby code anywhere.
 
-Before starting, confirm the branch you will work on is created from an up-to-date `main`, and that Postgres is running:
+Before starting, get the branch, the database and the Ruby toolchain into the state the rest of this chapter assumes. All of this runs **from the repository root**:
 
 ```sh
 git status                       # clean
 git pull
 git checkout -b feature/2-rails-api-skeleton
+
+cp .env.example .env             # only if chapter 01 did not leave you one
 docker compose up -d
+docker compose ps                # wait until the db service says (healthy)
+
 ruby -v                          # ruby 3.4.3
+gem install rails -v "~> 8.1"    # see below
+rails -v                         # Rails 8.1.3.1
 ```
 
-Ruby 3.4.3 and Rails 8.1 are fixed by D-028. Check what is actually installed rather than assuming — D-055 exists because "should be fine" is how a project acquires a dependency nobody chose.
+- **Why `gem install rails` is here.** Chapter 01 verified that Ruby was installed; it never installed Rails, because there was no Rails app yet. `rails new` in step 1 comes from the `rails` gem, installed once for the whole machine rather than per project — a project's own Rails version is then pinned in its `Gemfile` and used through `bundle exec`. If `rails -v` already prints a `8.1.x` version, skip the install.
+- **Why the container must be healthy before you go on.** `docker compose up -d` returns as soon as the container *starts*, which is a second or two before Postgres accepts connections. Step 4 ends by creating databases; starting it against a container that is still booting produces a connection error that looks like a configuration mistake.
+- Ruby 3.4.3 and Rails 8.1 are fixed by D-028. Check what is actually installed rather than assuming — D-055 exists because "should be fine" is how a project acquires a dependency nobody chose.
+
+Steps 1 and 9 run from the repository root; steps 2 to 8 run from `apps/api`. Each step says where it is, so you can pick the chapter up in the middle.
 
 ## 4. Step by step
 
 ### Step 1 — Generate the application
 
+- **Where:** the repository root.
 - **Command:**
   ```sh
   rails new apps/api --api --database=postgresql \
     --skip-test --skip-action-cable --skip-active-storage --skip-action-mailbox \
     --skip-jbuilder --skip-kamal --skip-ci
+
+  rm -rf apps/api/.git            # see the note below; this is not optional
   ```
 - **What it does:** creates the whole Rails application inside `apps/api` and runs `bundle install`.
 - **Flag by flag** (the skips are D-063; each one is a component with a decided reason not to exist here):
@@ -69,6 +82,10 @@ Ruby 3.4.3 and Rails 8.1 are fixed by D-028. Check what is actually installed ra
 
 ### Step 2 — Add the remaining gems
 
+- **Where:** from here to step 8, `apps/api`:
+  ```sh
+  cd apps/api
+  ```
 - **File:** additions to `apps/api/Gemfile`, inside the existing `group :development, :test do` block:
   ```ruby
     # Loads the repository-root .env so development and test share one set of
@@ -93,7 +110,8 @@ Ruby 3.4.3 and Rails 8.1 are fixed by D-028. Check what is actually installed ra
 
 ### Step 3 — Point the app at the container, without copying credentials
 
-- **File:** `apps/api/config/database.yml` (annotated in section 5).
+- **File:** `apps/api/config/database.yml` — replace the generated file with the version annotated in section 5.
+- **What it reads:** the `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_PORT` you already have in the repository-root `.env` from chapter 01. Nothing new is added to that file here; if you skipped the `cp .env.example .env` at the top of this chapter, do it now.
 - **File:** `apps/api/config/application.rb`, inserted immediately after `Bundler.require(*Rails.groups)`:
   ```ruby
   # In development and test, read the repository-root .env, the single place where
@@ -113,7 +131,38 @@ Ruby 3.4.3 and Rails 8.1 are fixed by D-028. Check what is actually installed ra
 
 ### Step 4 — Put Solid Cache and Solid Queue on the primary database
 
-This is the biggest departure from what Rails generates, and it gets its own explanation in section 5. In short: Rails 8 wants three databases; we want one (D-052). Four edits, then the migrations.
+This is the biggest departure from what Rails generates, and it gets its own explanation in section 5. In short: Rails 8 wants three databases; we want one (D-052). Section 5 lists four changes — three file edits and the move of the Solid tables into migrations — and this step ends by creating the databases.
+
+- **The three file edits** are described in full in section 5: drop the `cache:` and `queue:` connections from `config/database.yml` production, drop `database: cache` from `config/cache.yml` production, and delete the `config.solid_queue.connects_to` line from `config/environments/production.rb`.
+- **The migrations.** `rails new` already ran the Solid installers for you, so `db/cache_schema.rb` and `db/queue_schema.rb` are sitting in the app — they are verbatim copies of the gems' own templates. Turn each into an ordinary migration and delete the original:
+  ```sh
+  # For each of the two files: create db/migrate/<timestamp>_create_solid_<x>_tables.rb
+  # containing the schema file's body, wrapped in a migration class.
+  ls db/cache_schema.rb db/queue_schema.rb      # the source files
+  ls db/migrate/                                # where they must end up
+  rm db/cache_schema.rb db/queue_schema.rb      # only after the migrations exist
+  ```
+  In this repository the result is `db/migrate/20260915000001_create_solid_cache_tables.rb` and `db/migrate/20260915000002_create_solid_queue_tables.rb`; section 5 shows the wrapper. Copy the bodies, never retype them — the tables have to be exactly what the gems expect.
+- **Then create the databases:**
+  ```sh
+  bin/rails db:prepare
+  ```
+- **What `db:prepare` does:** creates each database if it is missing, loads `db/schema.rb` into it, and runs any migration that has not run yet — so it works both on an empty machine and on an existing one. Run from development it prepares the **test** database as well, which is why one command is enough here.
+- **What you should see** — the two databases, then your two migrations, which is also what writes `db/schema.rb` for the first time:
+  ```
+  Created database 'tintara_lab_development'
+  Created database 'tintara_lab_test'
+  == 20260915000001 CreateSolidCacheTables: migrating ===========================
+  -- create_table("solid_cache_entries", {force: :cascade})
+     -> 0.0103s
+  == 20260915000001 CreateSolidCacheTables: migrated (0.0103s) ==================
+
+  == 20260915000002 CreateSolidQueueTables: migrating ===========================
+  ... 13 create_table and 8 add_foreign_key lines ...
+  == 20260915000002 CreateSolidQueueTables: migrated (0.1549s) ==================
+  ```
+  and then **the same two migrations a second time**, against the test database. That repetition is not a bug and it is the whole reason one command suffices: `db:prepare` handles development and test together. On later runs, once `db/schema.rb` exists, it loads the schema instead and the migration lines do not appear at all.
+- **Why this is the point at which it belongs.** Up to now nothing has touched Postgres, so nothing could have failed. From step 5 on, every command needs a database: RSpec boots the app in the test environment and connects. Run `bundle exec rspec` before this and you get a connection error, not an empty suite.
 
 ### Step 5 — Install RSpec and its companions
 
@@ -143,7 +192,13 @@ This is the biggest departure from what Rails generates, and it gets its own exp
   end
   ```
 - **Why this way:** configuration lives in small files under `spec/support/` rather than piling up inside `rails_helper.rb`, so each concern can be read, moved or deleted on its own.
-- **What you should see:** `bundle exec rspec` reports `0 examples, 0 failures`. An empty suite that runs is a real milestone — it proves the app boots in the test environment and reaches the test database.
+- **What you should see:** `bundle exec rspec` reports `0 examples, 0 failures`. An empty suite that runs is a real milestone — it proves the app boots in the test environment and reaches the test database. That second half only holds because step 4 ended with `bin/rails db:prepare`; without it this command aborts with `connection to server ... failed: FATAL: database "tintara_lab_test" does not exist`.
+- **Commit the scaffold** before writing any spec, so the spec-first evidence in the next two steps is unambiguous:
+  ```sh
+  git add .      # you are in apps/api, so this stages the app and nothing else
+  git commit -m "Feature 2: scaffold the Rails 8.1 API app with RSpec, RuboCop and Postgres"
+  ```
+  `git` works from any subdirectory of the repository, so the paths in this step and the next two are relative to `apps/api`, not to the repository root.
 
 ### Step 6 — Write the spec first, and watch it fail
 
@@ -183,10 +238,12 @@ This is the biggest departure from what Rails generates, and it gets its own exp
   actual collection contained:    []
   the missing elements were:      ["status", "time"]
   ```
-  Five failures, and they fail for the *right reason*: the route does not exist, so the response body is empty. That distinction is what the step is for. A spec that passes before the feature exists is testing nothing — it happens more often than anyone admits, usually because a matcher is too loose or the request never actually ran. Seeing red first, and reading *why* it is red, is the only cheap proof that the spec is wired to the thing it claims to check. Here the empty-body message also confirmed the request had genuinely gone through the routing stack rather than blowing up earlier.
+  Five failures, and they fail for the *right reason*: the route does not exist, so Rails answers the request with its 404 error page. The body is not empty — it is about 67 KB of HTML — but `response.parsed_body` parses a `text/html` response into a Nokogiri document, and a document has no JSON keys, so `parsed_body.keys` is `[]` and `parsed_body["status"]` is `nil`. The other failures say the same thing from different angles: `expected: "application/json" got: "text/html"`, and a 404 where a 200 was expected.
+
+  That distinction is what the step is for. A spec that passes before the feature exists is testing nothing — it happens more often than anyone admits, usually because a matcher is too loose or the request never actually ran. Seeing red first, and reading *why* it is red, is the only cheap proof that the spec is wired to the thing it claims to check. A 404 HTML page is the *right* red: the request reached the routing stack and was rejected there, rather than blowing up earlier in a way that would have hidden whether the spec works at all.
 - **Then commit the spec on its own:**
   ```sh
-  git add apps/api/spec/requests && git commit -m "Feature 2: add specs for the health endpoint"
+  git add spec/requests && git commit -m "Feature 2: add specs for the health endpoint"
   ```
 - **Why the separate commit:** D-042 requires spec-first work; D-050 requires *evidence* of it. A branch where the spec commit precedes the implementation commit proves the order was real. If both arrive in one commit, nobody — including you, next month — can tell which was written first.
 
@@ -219,13 +276,19 @@ This is the biggest departure from what Rails generates, and it gets its own exp
 - **Why versioned** (D-031): `/api/v1/...` means a future breaking change can ship as `/api/v2/...` while old clients keep working. Retrofitting a version prefix onto a live API is a coordinated migration; putting it there from the first endpoint costs nothing.
 - **Why the response is so bare:** it says `status` and `time` and nothing else. Health endpoints are unauthenticated and, on a public repository and a public host, world-visible. The tempting version reports the Rails version, the environment name, the database status, the migration count — and hands an attacker a free inventory of what you run and how old it is. The fifth example in the spec (`exposes nothing but the status and the time`) exists to keep a well-meaning future addition out.
 - **Command:** `bundle exec rspec` → `5 examples, 0 failures`.
-- **Then commit:** `git commit -m "Feature 2: implement the health endpoint under /api/v1"`.
+- **Then commit:**
+  ```sh
+  git add config/routes.rb app/controllers/api/v1/health_controller.rb
+  git commit -m "Feature 2: implement the health endpoint under /api/v1"
+  ```
 
 ### Step 8 — Check it by hand, and from a genuinely empty database
 
-- **Commands:**
+- **Commands** (still in `apps/api`; `bin/rails server` does not return, so run the `curl` in a second terminal and stop the server with Ctrl-C when you are done):
   ```sh
   bin/rails server
+  ```
+  ```sh
   curl -si localhost:3000/api/v1/health
   ```
 - **What you should see:**
@@ -244,11 +307,20 @@ This is the biggest departure from what Rails generates, and it gets its own exp
 
 ### Step 9 — The CI workflow
 
+- **Where:** back at the repository root — the workflow does **not** live inside the app.
+  ```sh
+  cd ../..
+  ```
 - **File:** `.github/workflows/api.yml` at the **repository root** (annotated in section 5).
 - **What it does:** on every pull request into `main` and every push to `main` that touches `apps/api/**`, GitHub runs two jobs on fresh machines: RuboCop, and RSpec against a Postgres 18 service container.
 - **Command to confirm the YAML parses before pushing:**
   ```sh
   ruby -ryaml -e "YAML.safe_load_file('.github/workflows/api.yml', aliases: true); puts 'YAML OK'"
+  ```
+- **Then commit it**, along with the `CLAUDE.md` §7 API line that this task also fills in:
+  ```sh
+  git add .github/workflows/api.yml CLAUDE.md
+  git commit -m "Feature 2: add the API CI workflow and document the commands"
   ```
 - **What you should see** after pushing and opening the pull request:
   ```sh
@@ -258,12 +330,21 @@ This is the biggest departure from what Rails generates, and it gets its own exp
 
 ### Step 10 — Open the pull request, do not merge
 
+From the repository root, with `git status` clean — every step above ended in a commit:
+
 ```sh
+git status                                        # nothing uncommitted
 git push -u origin feature/2-rails-api-skeleton
+
+cp .github/pull_request_template.md /tmp/pr-body.md
+$EDITOR /tmp/pr-body.md                           # fill in every section
+
 gh pr create --base main \
   --title "Feature 2: create the Rails API skeleton with RSpec, RuboCop and CI" \
-  --body-file <filled-in pull request template>
+  --body-file /tmp/pr-body.md
 ```
+
+The template is the one chapter 01 committed: Summary, Task, Decisions implemented, How it was tested, Implementation report, Checklist. `gh pr create` does not read it for you, so filling a copy by hand and passing it with `--body-file` is how you get the same body every time — typing it into `--body` inline loses the structure the first time someone is in a hurry.
 
 The title is the squash commit that will land on `main` (chapter 01, step 11), so it must match the convention exactly. Merging is the owner's job, after review and QA.
 
@@ -377,6 +458,11 @@ on:
       - "apps/api/**"
       - ".github/workflows/api.yml"
 
+# Least privilege for the job token: neither job writes anything back to the
+# repository, and this repository is readable by everyone (D-059, D-066).
+permissions:
+  contents: read
+
 defaults:
   run:
     working-directory: apps/api
@@ -448,6 +534,29 @@ Section by section:
 
 - **`on:`** — the triggers. Pull requests targeting `main` (so nothing merges unverified) and pushes to `main` (so the branch everyone builds on is always known-good).
 - **`paths:`** — the monorepo essential. Without it, every frontend-only change would run the Ruby suite and every backend change would run the JavaScript one: slower feedback, and a wall of irrelevant green checks that trains people to ignore them. The workflow file lists **itself** in the filter, because a change to the workflow must be tested by the workflow. Two details worth knowing: for `pull_request` events GitHub evaluates the filter against every file changed in the whole pull request, not just the latest push — which is why adding this chapter to PR #1 re-ran the API workflow even though the commit touched only `handoff/`. And a path-filtered workflow that does not run reports *no status at all* rather than a passing one, which matters when you later make it a required status check (D-060).
+- **`permissions:` — the job token, and why it is turned down (D-066).** Every workflow run is handed an automatic credential, `GITHUB_TOKEN`: a short-lived token, created for that run and revoked when it ends, that authenticates as the workflow against this repository's API. It is what lets a workflow push a commit, comment on a pull request, publish a release or a package. You never create it and it is always there, which is exactly why it is easy to forget it exists.
+
+  How much that token can do, when a workflow says nothing, is **a repository setting rather than a property of the workflow** — Settings → Actions → General → Workflow permissions, readable from the command line:
+
+  ```sh
+  $ gh api repos/Myepes05/tintara-lab/actions/permissions/workflow
+  {"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}
+  ```
+
+  Here it is already `read`, which is the safe value. That is worth being precise about: the line below is not fixing a permissive token, it is making the safe one **independent of a setting that lives outside the file**. Anyone with admin access can flip that setting to `write`, and every workflow that declared nothing silently gets a writable token, with no commit and no review anywhere. A workflow that declares its own permissions is unaffected.
+
+  Neither job here writes anything — they check out the code, install gems, and run two commands that only read. So the workflow says so:
+
+  ```yaml
+  permissions:
+    contents: read
+  ```
+
+  Naming even one scope switches the token to **default-deny**: every scope you did not list becomes `none`, so this token can read the repository's contents and do nothing else. Declared at the top level it applies to both jobs; a `permissions:` block inside a single job overrides it for that job, which is how you would grant, say, `pull-requests: write` to one job that posts a comment without widening the rest.
+
+  **Why bother on a small project.** The token is only as trustworthy as everything the run executes, and a CI run executes a great deal of third-party code: two actions, plus every gem `bundle install` resolves. A compromised dependency in a run whose token can write is a path to a commit on `main`; the same dependency in a run whose token can only read has nowhere to go. This repository is readable by everyone (D-059), so its source, its workflows and the shape of its dependencies are public knowledge — there is no obscurity to lean on. The line costs nothing, it is not a response to any incident, and it is the habit that matters: **give a workflow the narrowest token that lets it do its job.** `web.yml` in chapter 03 declares the same thing from the start.
+
+  **Where this was missed the first time.** The workflow shipped without this block and QA flagged it as advisory rather than a defect — correctly, since nothing was broken. It was added in a follow-up round once the owner decided it (D-066). Worth noticing as a pattern: the things that are easiest to leave out of a workflow are the ones nothing fails without.
 - **`defaults.run.working-directory: apps/api`** — every `run` step executes inside the app directory, so the steps read `bundle exec rspec` rather than a `cd` prefix on each line. It applies only to `run` steps, not to `uses:` steps — which is why `setup-ruby` needs its own `working-directory` input.
 - **Two jobs, `lint` and `test`.** They run in parallel on separate machines. You learn "the style is wrong" and "the behaviour is wrong" at the same time instead of one after the other, and a red X names which kind of problem it is before you open anything.
 - **`actions/checkout@v7`** — copies your repository onto the runner. Nothing is there by default.
@@ -475,6 +584,7 @@ Section by section:
 | D-042, D-050 | Spec written and committed before the implementation | Writing tests afterwards, or in the same commit | A test written after the code tends to assert what the code does; the commit order is the only durable evidence of the discipline |
 | D-062 | RuboCop as Rails 8 ships it (`rubocop-rails-omakase`) | A custom `rubocop-rails` + `rubocop-rspec` configuration | Zero configuration, framework convention, no review time spent on style debates; rules can be tightened later with a reason |
 | D-033 | CI runs lint and tests only, path-filtered per app | One workflow for the whole monorepo; adding deployment now | Fast, relevant feedback; deployment is a separate decision (D-036) |
+| D-066 | `permissions: contents: read` declared at workflow level | Relying on the repository's default token permission | Neither job writes; declaring it makes the narrow token part of the file instead of a setting someone can flip elsewhere |
 | D-055 | Versions verified from RubyGems and the actions' repositories, and reported | Copying versions from memory or a tutorial | Half of CI folklore is two majors out of date |
 | D-058 | Postgres 18 service in CI, matching development | Whatever image an example used | Development, CI and production should not differ in a major database version |
 
@@ -507,7 +617,9 @@ Section by section:
 
 **11. A health endpoint is an information-disclosure surface.** Ours returns `status` and `time`, and a spec asserts that nothing else appears. Rails' generated `/up` (kept, untouched) is a different thing: it returns HTML and a 500 if the app fails to boot, and it exists for load balancers and uptime monitors. Ours is the API's own contract under `/api/v1`, and versioned with it.
 
-**Deliberately not done:** authentication and sessions (Feature 5); CORS, CSRF, rate limiting and the shared error format (Feature 4); any domain model, migration or seed (Phase 3); serializers, which are decided together with the API contract (D-051). Also present but unused: `bin/ci` and `config/ci.rb` ship with Rails 8.1 and run RuboCop, Brakeman and bundler-audit locally; Brakeman and bundler-audit are installed but not yet run in CI, which is a recorded follow-up rather than an oversight.
+**12. A chapter can be accurate line by line and still not work.** This one was. Every command in it ran, every output was real — but the author's machine already had a `rails` gem installed and databases created, so those steps were never written down, and a reader following in order hit a connection error where the chapter promised `0 examples, 0 failures`. QA caught it by trying to reproduce the chapter rather than by reading it, and the project turned it into a rule (**D-067**): a chapter must be followable from the previous chapter's end state, and where the author had state the reader lacks — a container, a gem, a database, an environment variable — the chapter has to say how the reader gets it. The habit that prevents it is cheap: after writing, re-read the steps as someone who has only finished the previous chapter, and ask of every command what it silently assumes.
+
+**Deliberately not done:** authentication and sessions (Feature 5); CORS, CSRF, rate limiting and the shared error format (Feature 4); any domain model, migration or seed (Phase 3); serializers, which are decided together with the API contract (D-051). Also present but unused: `bin/ci` and `config/ci.rb` ship with Rails 8.1 and run setup, RuboCop, bundler-audit and Brakeman locally — and no test step, because `--skip-test` meant the generator never wrote one; Brakeman and bundler-audit are installed but not yet run in CI, which is a recorded follow-up rather than an oversight.
 
 ## 8. How to verify it yourself
 
@@ -537,8 +649,10 @@ bin/rails routes | grep -i "health\|up"
 # rails_health_check GET  /up(.:format)            rails/health#show
 #      api_v1_health GET  /api/v1/health(.:format) api/v1/health#show
 
-# Spec-first evidence: the spec commit precedes the implementation commit
-cd ../.. && git log --oneline main..HEAD
+# Spec-first evidence: the spec commit precedes the implementation commit.
+# These are the branch's first four commits, oldest last; the implementation
+# report, these chapters and the QA fix round follow them.
+cd ../.. && git log --oneline main..HEAD | tail -4
 # 0e187fc Feature 2: add the API CI workflow and document the commands
 # cdd649e Feature 2: implement the health endpoint under /api/v1
 # d490ca9 Feature 2: add specs for the health endpoint
@@ -570,6 +684,7 @@ Two loose ends from this chapter are recorded rather than done: adding `api.yml`
 - **ERB** — Ruby's templating, used inside `database.yml` so it can read `ENV`.
 - **FactoryBot** — builds test records; **shoulda-matchers** — one-line matchers for common Rails behaviour.
 - **GitHub Actions: workflow / job / step / runner** — a YAML file describing work / one machine's worth of it / one command in it / the virtual machine it runs on.
+- **`GITHUB_TOKEN` / `permissions:`** — the short-lived credential every workflow run is given, authenticating as the workflow against its own repository / the block that narrows what it may do. Naming any scope turns the token default-deny for all the others.
 - **Migration / `db/schema.rb`** — a described database change / the generated snapshot of the result.
 - **Namespace (routing)** — maps a URL prefix, a Ruby module and a directory together (`/api/v1` → `Api::V1::` → `app/controllers/api/v1/`).
 - **Path filter** — a CI trigger condition limiting a workflow to changes under certain paths.

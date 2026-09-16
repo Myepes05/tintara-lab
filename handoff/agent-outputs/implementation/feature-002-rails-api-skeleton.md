@@ -215,7 +215,7 @@ $ gh run view 35052956324 --json status,conclusion,url,jobs
 ## Suggested follow-ups (not implemented)
 1. Add `api.yml` (and later `web.yml`) as required status checks on `main` once they have run there, as the carry-over note in the status file says (D-060).
 2. Consider narrowing the root `.gitignore` `tmp/` rule to `/tmp/` so each app's own `.gitignore` governs its `tmp/` directory and `tmp/.keep` can be tracked. Cosmetic only.
-3. `bin/ci` and `config/ci.rb` ship with Rails 8.1 and run RuboCop, Brakeman, bundler-audit and the (absent) default test task. They are unused by the GitHub workflow; either wire `bin/ci` into CI later or leave it as a local convenience.
+3. `bin/ci` and `config/ci.rb` ship with Rails 8.1 and run RuboCop, Brakeman and bundler-audit. They are unused by the GitHub workflow; either wire `bin/ci` into CI later or leave it as a local convenience.
 4. Brakeman and bundler-audit are installed but not run in CI. Adding them to the `lint` job would be cheap once there is real code.
 
 ## How to verify manually

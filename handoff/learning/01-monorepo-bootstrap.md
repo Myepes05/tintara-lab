@@ -181,6 +181,54 @@ It was **not** a git repository yet, and there was no GitHub repository. Tools v
 - **What it means:** on GitHub's free plan, branch protection rules are only available on repositories that anyone can read. The owner's account reports `plan: null`, so the API refused.
 - **The choice:** two options existed. Pay for GitHub Pro (about $4/month) and keep the repository private with protection; or make the repository readable by everyone and get protection for free. The owner chose the second, and reaffirmed it when the consequences were put in writing (D-059).
 - **What that trade-off actually costs.** Everything in this repository is now world-readable, including `handoff/`: the photographer's real name and city, the mockups, the discovery answers and the business plan, plus the owner's email address. It is in the first commit, so rewriting a file later does not remove it from the history. From that moment, **any secret committed by mistake must be treated as compromised the instant it is pushed** — not "if someone notices", but immediately, because public repositories are continuously scraped by bots looking for exactly that. The correct response to such a mistake is to rotate the credential, not to delete the file. One consolation: GitHub Actions minutes are free on public repositories, so all the CI in chapter 02 costs nothing.
+- **The commands that produced the end state.** Two of them, in this order — the visibility change first, because protection is refused until it lands:
+  ```sh
+  gh repo edit Myepes05/tintara-lab --visibility public \
+    --accept-visibility-change-consequences
+
+  gh repo view tintara-lab --json name,visibility,defaultBranchRef,url
+  # {"defaultBranchRef":{"name":"main"},"name":"tintara-lab",
+  #  "url":"https://github.com/Myepes05/tintara-lab","visibility":"PUBLIC"}
+  ```
+  `--accept-visibility-change-consequences` is a required confirmation flag, not a formality: `gh` refuses the change without it, precisely because publication cannot be undone in the sense that matters (see the paragraph above). Then the protection rule itself:
+  ```sh
+  cat > /tmp/protection.json <<'JSON'
+  {
+    "required_status_checks": null,
+    "enforce_admins": false,
+    "required_pull_request_reviews": {
+      "required_approving_review_count": 0,
+      "dismiss_stale_reviews": true,
+      "require_code_owner_reviews": false
+    },
+    "restrictions": null,
+    "required_linear_history": true,
+    "allow_force_pushes": false,
+    "allow_deletions": false,
+    "required_conversation_resolution": true
+  }
+  JSON
+
+  gh api -X PUT repos/Myepes05/tintara-lab/branches/main/protection \
+    --input /tmp/protection.json
+  ```
+  - **`PUT` replaces the whole rule**, it does not merge into it. That is why every key is present even when its value is the default: anything you leave out is *unset*, not left alone. `required_status_checks`, `enforce_admins`, `required_pull_request_reviews` and `restrictions` must appear even as `null`, or the API rejects the call.
+  - **`"required_status_checks": null`** — there are no CI workflows yet. `api.yml` arrives in chapter 02 and `web.yml` in chapter 03; once they have run on `main` they can be added here as required checks (D-060).
+  - **`"restrictions": null`** — no per-user or per-team push allowlist. That feature is organisation-only anyway, and this is a personal repository.
+  - **What each key buys:**
+
+    | Key | Effect on `main` |
+    |---|---|
+    | `required_pull_request_reviews` present | Nothing reaches `main` except through a pull request |
+    | `required_approving_review_count: 0` | …but no approval is demanded — see below |
+    | `dismiss_stale_reviews: true` | A new push invalidates any approval given before it |
+    | `required_conversation_resolution: true` | Open review conversations block the merge, so QA findings cannot be merged past |
+    | `required_linear_history: true` | Only squash or rebase merges; no merge commits |
+    | `allow_force_pushes: false` | `main`'s history cannot be rewritten |
+    | `allow_deletions: false` | `main` cannot be deleted |
+    | `enforce_admins: false` | The rule does not apply to administrators — see below |
+  - **If you keep the repository private and pay for a plan instead**, everything above still applies except the first command: skip the `gh repo edit` and run the same `PUT` unchanged. The payload does not depend on visibility; only GitHub's willingness to accept it does.
+  - **One honest caveat, in keeping with the note at the top of this chapter.** The Feature 1 report records the `gh api -X PUT` call but writes its body only as `--input <payload>`; the literal JSON was never written down. The payload above is therefore reconstructed from the rule that is actually live on `main` — every field was read back with the query below before being written here, and running it reproduces exactly those settings. It is what the repository has, not necessarily character-for-character what was typed.
 - **What was configured** (verified live while writing this chapter):
   ```sh
   $ gh api repos/Myepes05/tintara-lab/branches/main/protection \
