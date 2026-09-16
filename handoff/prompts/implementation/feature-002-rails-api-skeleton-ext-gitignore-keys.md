@@ -1,5 +1,7 @@
 # Feature 2 — extension: ignore key files repository-wide
 
+**Status: NOT DISPATCHED (2026-09-15).** The owner questioned whether the risk justified the work, and he was right: the gap closes when PR #1 merges. The rule is folded into the Feature 3 prompt instead. Kept for the record.
+
 **Type:** Implementation (extension of the open Feature 2 PR) · **Phase:** 1 — Foundation
 **Branch:** `feature/2-rails-api-skeleton` (the branch you are on) · **PR:** #1 — add to it, do not merge
 **Commit prefix:** `Feature 2:`

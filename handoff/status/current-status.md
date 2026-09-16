@@ -52,7 +52,9 @@ Not a QA pass; QA still runs. What the orchestrator checked directly:
 - Pinned actions verified upstream: `actions/checkout@v7` (latest v7.0.1) and `ruby/setup-ruby@v1` (that action's own convention). The chapter's claim that `setup-ruby` has no `ruby-version-file` input was verified against its `action.yml`: correct.
 - Learning chapters are substantial and specific; the traps sections describe real failures.
 
-**Risk found by the orchestrator, outside the PR:** the root `.gitignore` does not ignore `*.key`. Inside `apps/api` the generated `.gitignore` covers `/config/*.key`, but on `main`, where that file does not exist, `apps/api/config/master.key` shows as an untracked file and `git add -A` would stage it. On a repository readable by everyone (D-059) that would publish the key that decrypts the credentials file. Proposed remedy: add a repository-wide key rule to the root `.gitignore` during the Feature 2 fix round.
+**Risk found by the orchestrator, and its correct size (owner challenged the framing, 2026-09-15):** the root `.gitignore` does not ignore `*.key`. Inside `apps/api` the generated `.gitignore` covers `/config/*.key`, so the key is ignored on the feature branch and, once PR #1 merges, on `main` as well. The exposure is therefore a **window**, not a permanent hole: only while PR #1 is unmerged, and only if someone runs `git add -A` while `main` is checked out. The owner is the only person pushing, so the practical risk is small.
+
+**Resolution:** the extension prompt `prompts/implementation/feature-002-rails-api-skeleton-ext-gitignore-keys.md` was written but **is not dispatched**. A round trip through the agent, chapter edits and QA re-verification is not worth a one-line defence-in-depth rule. The line is folded into the Feature 3 prompt instead, where an agent is editing the repository anyway. Until PR #1 merges, handoff commits on `main` stage explicit paths, never `git add -A`.
 - New proposals the owner can object to: D-062 (RuboCop omakase), D-063 (Rails components skipped).
 
 ### Next
