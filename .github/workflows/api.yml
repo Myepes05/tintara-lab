@@ -12,6 +12,11 @@ on:
       - "apps/api/**"
       - ".github/workflows/api.yml"
 
+# Least privilege for the job token: neither job writes anything back to the
+# repository, and this repository is readable by everyone (D-059, D-066).
+permissions:
+  contents: read
+
 defaults:
   run:
     working-directory: apps/api
