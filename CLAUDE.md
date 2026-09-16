@@ -137,7 +137,7 @@ CLAUDE.md
 Commands are filled in by the tasks that create them. If a command here is missing or wrong, report it; don't guess.
 
 - **Postgres** (from the repo root, after `cp .env.example .env`): start `docker compose up -d` · health `docker compose ps` and `docker compose exec db pg_isready` · stop `docker compose down` (keeps the `db_data` volume) · logs `docker compose logs -f db`
-- **API:** _defined by Feature 2_
+- **API** (from `apps/api`, with Postgres running): install `bundle install` · database `bin/rails db:prepare` · server `bin/rails server` (http://localhost:3000, health check `GET /api/v1/health`) · specs `bundle exec rspec` · lint `bundle exec rubocop`. Credentials come from the root `.env`; no `apps/api/.env` is needed.
 - **Web:** _defined by Feature 3_
 
 ## 8. Report requirements (summary)
