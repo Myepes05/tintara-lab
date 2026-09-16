@@ -1,13 +1,13 @@
-import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import { SiteShell } from "~/components/site-shell";
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
-  ];
+export function meta() {
+  return [{ title: "Tintara Lab" }];
 }
 
 export default function Home() {
-  return <Welcome />;
+  return (
+    <SiteShell heading="Tintara Lab">
+      <p>Sitio en construcción.</p>
+    </SiteShell>
+  );
 }

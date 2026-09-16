@@ -1,15 +1,4 @@
+/* Tailwind CSS v4 needs no config file: this single import loads the engine and
+   scans the project for utility classes. The palette, fonts and design tokens
+   of the real site are a later feature; nothing is customised here yet. */
 @import "tailwindcss";
-
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-}
-
-html,
-body {
-  @apply bg-white dark:bg-gray-950;
-
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
-}
