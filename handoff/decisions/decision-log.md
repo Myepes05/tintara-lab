@@ -279,7 +279,7 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
 - **Deferred:** the deployment pipeline.
 
 ### D-034 · Accepted — Repository and pull requests
-- **Repository:** private GitHub repo `tintara-lab`; `main` is the base branch.
+- **Repository:** GitHub repo `tintara-lab`; `main` is the base branch. **Amended 2026-09-15:** the repository was switched from private to open to everyone, so that branch protection could be enabled. See D-059.
 - **Pull requests:** every change goes through a branch and a PR opened by the implementation agent.
 - **Merging:** only the owner merges, after review, using squash merge.
 - **Rejected alternative:** rebase-merge. The owner prefers squash.
@@ -462,3 +462,46 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
 
 ### D-057 · Research — Branch protection on the private repo
 - **Note:** GitHub branch protection for private repos may require a paid GitHub plan (not verified yet). Feature 1 checks whether it's available and reports back without configuring anything. Until protection exists, "only the owner merges" is a convention written into `CLAUDE.md`.
+
+---
+
+## Feature 1 outcomes (2026-09-15)
+
+### D-058 · Accepted — Development uses Postgres 18
+- **Decision:** `docker-compose.yml` pins `postgres:18` (verified running 18.6).
+- **Owner's answer to the Feature 1 question:** stay on 18; if the hosting provider's default version differs at deployment, deal with it then.
+- **Known caveat (D-036):** Railway's Postgres template image tag `:latest` currently resolves to Postgres 16, per the template repository's build workflow. At deployment, select the `:18` image explicitly so development and production match.
+
+### D-059 · Accepted by the owner, flagged by the orchestrator — Repository visibility changed to open, and `main` protected
+- **What happened (2026-09-15):** The owner directed the Feature 1 agent to switch `tintara-lab` from private to readable by everyone, so that GitHub's branch protection could be enabled. Protection is now active on `main`.
+- **Why it was needed:** Branch protection and rulesets are gated on the owner's GitHub plan (`gh api user` reports `plan: null`); the API returned 403 "Upgrade to GitHub Pro or make this repository public".
+- **Protection configured:** pull request required (0 approvals, because a single account cannot approve its own PR), stale approvals dismissed, conversation resolution required, linear history required, force pushes and deletions blocked, administrators **not** included (deliberate: D-053 has the orchestrator committing `docs N` straight to `main`).
+- **Alternative that was offered and declined:** GitHub Pro (about $4/month), which allows protection on a private repository.
+- **Consequences now in effect:**
+  - Everything in `handoff/` is world-readable, including the photographer's real name and city, both mockup images, the discovery answers and the whole business plan, plus the owner's email address in `FinalAnswers.md` and in the status file. It is in the first commit, so the history carries it even if the files change later.
+  - Any secret committed by mistake from now on must be treated as compromised the instant it is pushed.
+  - Strangers can open issues and pull requests. Issues are currently enabled.
+  - GitHub Actions minutes are free for repositories readable by everyone, which removes any CI usage cost.
+- **Orchestrator's concern (raised 2026-09-13 in the agent session and again 2026-09-15):** the exposed data includes a third party's personal information (the photographer). Whether she agreed to it is unknown. The orchestrator recommends reverting to private, and either paying for GitHub Pro or relying on the convention that only the owner merges.
+- **Owner's answer (2026-09-15):** keep the current visibility. Reverting to private may be reconsidered later.
+- **Status:** Accepted, with the orchestrator's concern on record.
+
+### D-060 · Accepted — Branch protection is now configured (supersedes the research note in D-057)
+- Required status checks are not set yet. Once `api.yml` (Feature 2) and `web.yml` (Feature 3) have run on `main`, add them as required checks.
+
+### D-061 · Proposed — QA agents are dispatched only for tasks that produce application code
+- **Decision:** Scaffolding and configuration tasks with no application code and no specs (such as Feature 1) are verified by the orchestrator directly, and the verification is recorded in the status file. Tasks that produce application code or specs always get a QA agent.
+- **Rationale:** A QA agent's value is in independently re-deriving behavior from specs. For Feature 1 the deliverables are files and repository settings, which the orchestrator can verify in a minute with direct commands, and did.
+- **Status:** Accepted by the owner 2026-09-15. Feature 1 had no QA agent; the orchestrator's verification is recorded in the status file. QA agents resume with Feature 2.
+
+### D-062 · Proposed — RuboCop uses the Rails 8 default `rubocop-rails-omakase` configuration
+- **Decision:** Keep the linting setup Rails 8 generates, with no extra style plugins for now.
+- **Rationale:** Zero configuration, it is the convention the framework ships, and it avoids spending review time on style debates. Rules can be tightened later if something specific justifies it.
+- **Rejected alternative:** A custom `rubocop-rails` plus `rubocop-rspec` setup. More configuration to maintain, and it tends to produce large mechanical diffs.
+- **Status:** Implemented in Feature 2 unless the owner objects.
+
+### D-063 · Proposed — Rails components skipped in Feature 2
+- **Skipped:** Action Cable (no realtime features), Active Storage (images go directly to Cloudinary, D-023), Action Mailbox (no inbound mail), the Rails default test framework (RSpec is used, D-000), Jbuilder (the serialization approach is decided with the API contract, D-051), and Kamal (deployment is deferred and the target is Railway, D-036).
+- **Kept:** Action Mailer (password reset and contact notifications, D-014), Solid Cache and Solid Queue (D-052), Brakeman and RuboCop (Rails 8 defaults).
+- **Rationale:** Every component kept has a decided use; skipping the rest keeps migrations, configuration and the dependency surface small.
+- **Status:** Implemented in Feature 2 unless the owner objects.
