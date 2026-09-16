@@ -387,6 +387,10 @@ $ gh run view 35057568130 --json conclusion,headSha,jobs
 
 Run: https://github.com/Myepes05/tintara-lab/actions/runs/35057568130 — green with the `permissions:` block in place, which is the point: the token was narrowed and nothing in either job needed more than it now has.
 
+Two documentation-only commits followed (`6d35423`, this section; `4c93bc2`, a one-line correction to chapter 02's directory map, noted below). Both re-ran the workflow and both are green — `pull_request` path filters are evaluated against the whole PR diff, which contains `api.yml`, so a `handoff/`-only commit still triggers the API workflow. Final head at the time of writing: **`4c93bc2`**, run https://github.com/Myepes05/tintara-lab/actions/runs/35057730411, `RuboCop` and `RSpec` both `success`.
+
+The correction in `4c93bc2`: section 3's directory map said "steps 1 and 9 run from the repository root", but step 10 does too. Caught on a last read-through of the same D-067 pass.
+
 ### Disagreements
 
 None. Every finding was correct as filed. Two notes on how they were carried out rather than objections to them:
