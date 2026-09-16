@@ -1,0 +1,36 @@
+# PostgreSQL configuration.
+#
+# Development and test connect to the Postgres container defined in the
+# repository root docker-compose.yml. Its credentials live in the root .env,
+# which dotenv loads from config/application.rb, so they are never duplicated
+# here. In CI the same variables come from the workflow environment instead.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  # For details on connection pooling, see Rails configuration guide
+  # https://guides.rubyonrails.org/configuring.html#database-pooling
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("POSTGRES_HOST", "localhost") %>
+  port: <%= ENV.fetch("POSTGRES_PORT", 5432) %>
+  username: <%= ENV["POSTGRES_USER"] %>
+  password: <%= ENV["POSTGRES_PASSWORD"] %>
+
+development:
+  <<: *default
+  database: tintara_lab_development
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test:
+  <<: *default
+  database: tintara_lab_test
+
+# Production takes the whole connection from DATABASE_URL, provided by the
+# hosting platform. Solid Cache and Solid Queue share this primary database
+# (D-052), so no extra connections are declared.
+production:
+  adapter: postgresql
+  encoding: unicode
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  url: <%= ENV["DATABASE_URL"] %>
