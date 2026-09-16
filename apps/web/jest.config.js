@@ -12,8 +12,8 @@
  *  - Vite can import CSS and SVG files as modules; Node cannot, so those
  *    imports are mapped to inert stubs.
  *  - Vite replaces `import.meta.env` at build time. ts-jest compiles to
- *    CommonJS, where `import.meta` is a syntax error, so the single module that
- *    reads it is mapped to a stub as well. Everything that interprets those
+ *    CommonJS, and TypeScript refuses to compile `import.meta` for CommonJS
+ *    (error TS1343), so the single module that reads it is mapped to a stub. Everything that interprets those
  *    values lives in plain modules that tests can call directly.
  *
  * @type {import('jest').Config}

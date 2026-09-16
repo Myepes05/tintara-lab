@@ -9,8 +9,9 @@ import type { ClientEnv } from "./env-types";
  *
  *  - No component ever reads an environment variable directly (D-020), so the
  *    logic that interprets these values can be unit-tested with plain objects.
- *  - Jest, which compiles to CommonJS and cannot parse `import.meta`, only has
- *    to replace this one module (see jest.config.js).
+ *  - Jest runs tests as CommonJS, and TypeScript will not compile
+ *    `import.meta` to CommonJS, so Jest only has to replace this one module
+ *    (see jest.config.js).
  */
 export const clientEnv: ClientEnv = {
   // Each variable is read by its full name: Vite replaces the expression
