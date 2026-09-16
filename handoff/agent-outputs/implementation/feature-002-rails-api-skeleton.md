@@ -77,6 +77,20 @@ Their contents were taken from the installed gems' own templates (`solid_cache-1
 
 In test, `config.active_job.queue_adapter = :test` means jobs are captured rather than enqueued, so no worker is needed. Development and test keep the Rails defaults for the cache store (`:memory_store` and `:null_store`); Solid Cache and Solid Queue are production-side, which is where D-052 applies.
 
+## Learning chapters (D-064)
+D-064 was accepted after this PR was opened, so the chapters for Features 1 and 2 were backfilled into the same branch as a separate extension task (`handoff/prompts/implementation/feature-002-rails-api-skeleton-ext-learning.md`). Both follow `handoff/templates/learning-chapter.md` and its ten sections.
+
+| File | Task | Sources |
+|---|---|---|
+| `handoff/learning/01-monorepo-bootstrap.md` | Feature 1 | Backfilled: the Feature 1 report, the committed files themselves, and the live GitHub settings (repository merge configuration and `main` branch protection, both re-queried with `gh api` while writing). The chapter states up front that it is a reconstruction |
+| `handoff/learning/02-rails-api-skeleton.md` | Feature 2 | First-hand, from this task |
+
+**Traps documented in chapter 01:** the Postgres 18 `PGDATA` change and the volume mount path that silently loses data; branch protection being unavailable on a private repository under the owner's plan; publication being permanent and retroactive over the whole history; `docker compose down -v`; `${VAR:?}` versus `${VAR:-}` for credentials; `.vscode/*` versus `.vscode/` and git's rule that a negation cannot re-include a file inside an excluded directory; empty directories needing `.gitkeep`; case-insensitive macOS hiding path bugs until CI; port 5432 conflicts; the host's `:latest` Postgres tag resolving to major 16.
+
+**Traps documented in chapter 02:** `rails new` creating a nested `.git` inside the monorepo, and `--skip-git` also removing the `.gitignore` that protects `master.key`; the generated `apps/api/.github/workflows/ci.yml` that GitHub can never run; the root `.gitignore` `tmp/` rule outranking `apps/api/.gitignore`'s `!/tmp/.keep` negation; `storage/` correctly absent because Active Storage is skipped; `db:prepare` on a long-lived database proving nothing; simulating the CI environment locally before pushing; `Dotenv::Rails.files` having to be set before the `Application` class is defined; `ruby/setup-ruby` having no `ruby-version-file` input; Solid Cache and Solid Queue keeping their tables outside `db/migrate`; `config/master.key` being both a secret to protect and a key whose loss makes `credentials.yml.enc` unreadable; a health endpoint as an information-disclosure surface.
+
+Verification claims in both chapters were re-checked against the repository rather than quoted from memory: the `.gitignore` line numbers in the `git check-ignore` examples, the live branch-protection and merge settings, and the Rails 8.1 `--skip-ci` behaviour (`railties-8.1.3.1/lib/rails/generators/rails/app/app_generator.rb`, `cifiles` creates `.github/workflows/ci.yml` and `.github/dependabot.yml` relative to the app root).
+
 ## Commands run and results
 ```
 $ ruby -v
@@ -196,6 +210,7 @@ $ gh run view 35052956324 --json status,conclusion,url,jobs
 1. **D-052 and D-062 are still `Proposed` in the decision log.** Both are implemented here as the prompt instructed. If you accept them, the log entries should move to `Accepted`; D-063 is in the same position and should also record the `--skip-ci` note from deviation 1.
 2. **`config/master.key` and `config/credentials.yml.enc`.** The generator created both; the key is ignored and only `credentials.yml.enc` is committed, which is the Rails convention. The encrypted file currently holds only the generated `secret_key_base`. The repository is readable by everyone (D-059), so please store the master key somewhere safe outside the repository — without it the credentials file cannot be read again, and it is not in git.
 3. **Production `DATABASE_URL`.** `config/database.yml` production reads it and declares nothing else, so Solid Cache and Solid Queue will share that one database (D-052). Nothing else about deployment was touched.
+4. **`handoff/learning/README.md` was not committed by me.** It already lists both chapters correctly, so nothing needed changing. It is currently an untracked file in the working tree, alongside the rest of this session's uncommitted handoff work (`CLAUDE.md` §7b, the four updated templates, `handoff/templates/learning-chapter.md`, the decision log and the status file). Per D-053 those are the orchestrator's to commit to `main` as the next `docs N`; an implementation agent commits only its own report and chapter (CLAUDE.md §3). Please make sure the learning README and template go in that commit, otherwise this PR adds two chapters to an index that does not exist on `main` yet.
 
 ## Suggested follow-ups (not implemented)
 1. Add `api.yml` (and later `web.yml`) as required status checks on `main` once they have run there, as the carry-over note in the status file says (D-060).
