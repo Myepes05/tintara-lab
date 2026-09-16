@@ -45,7 +45,7 @@ rails -v                         # Rails 8.1.3.1
 - **Why the container must be healthy before you go on.** `docker compose up -d` returns as soon as the container *starts*, which is a second or two before Postgres accepts connections. Step 4 ends by creating databases; starting it against a container that is still booting produces a connection error that looks like a configuration mistake.
 - Ruby 3.4.3 and Rails 8.1 are fixed by D-028. Check what is actually installed rather than assuming — D-055 exists because "should be fine" is how a project acquires a dependency nobody chose.
 
-Steps 1 and 9 run from the repository root; steps 2 to 8 run from `apps/api`. Each step says where it is, so you can pick the chapter up in the middle.
+Steps 1, 9 and 10 run from the repository root; steps 2 to 8 run from `apps/api`. Each step says where it is, so you can pick the chapter up in the middle.
 
 ## 4. Step by step
 
