@@ -1,0 +1,84 @@
+name: API
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api.yml"
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/api.yml"
+
+# Least privilege for the job token: neither job writes anything back to the
+# repository, and this repository is readable by everyone (D-059, D-066).
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/api
+
+jobs:
+  lint:
+    name: RuboCop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      # ruby-version is omitted on purpose: setup-ruby then reads
+      # apps/api/.ruby-version, resolved from working-directory.
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          working-directory: apps/api
+
+      - name: Lint
+        run: bundle exec rubocop
+
+  test:
+    name: RSpec
+    runs-on: ubuntu-latest
+
+    # Throwaway credentials for the service container below. They exist only
+    # for the lifetime of this job and grant access to nothing else.
+    env:
+      POSTGRES_USER: tintara_ci
+      POSTGRES_PASSWORD: tintara_ci_password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      RAILS_ENV: test
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: tintara_ci
+          POSTGRES_PASSWORD: tintara_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tintara_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          working-directory: apps/api
+
+      - name: Prepare the test database
+        run: bin/rails db:prepare
+
+      - name: Run the specs
+        run: bundle exec rspec
