@@ -1,0 +1,10 @@
+# pnpm settings for this package (pnpm 12 reads its configuration from here,
+# not from package.json).
+
+# Deny every dependency's install-time build script. Both entries below come
+# from Jest 30 and both ship prebuilt platform binaries, so nothing needs to
+# compile at install time. Denying them keeps `pnpm install` from executing
+# third-party code on developer machines and in CI.
+allowBuilds:
+  '@parcel/watcher': false
+  unrs-resolver: false
