@@ -10,6 +10,7 @@ A chapter per implementation task, written by the agent that did the work, so th
 |---|---|---|
 | 01 | Feature 1 — Monorepo bootstrap: git, Docker Postgres, GitHub repo | `01-monorepo-bootstrap.md` |
 | 02 | Feature 2 — Rails API skeleton: RSpec, RuboCop, CI | `02-rails-api-skeleton.md` |
+| 03 | Feature 3 — React Router web skeleton: SSR, Jest, ESLint, CI | `03-web-skeleton.md` |
 
 Chapters are added as tasks land. The table above is updated by the orchestrator.
 
