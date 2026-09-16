@@ -41,7 +41,10 @@
 ### In progress
 - **Feature 2** (Rails API skeleton): implementation finished. PR #1 https://github.com/Myepes05/tintara-lab/pull/1, branch `feature/2-rails-api-skeleton`, 5 commits, spec commit `d490ca9` before implementation `cdd649e`. Report delivered. The orchestrator has not reviewed the code yet.
 - **Feature 2 extension:** done. Chapters 01 and 02 committed to PR #1 as `981349e`, documentation only.
-- **Feature 2 QA:** prompt written at `prompts/qa/qa-feature-002-rails-api-skeleton.md`. Waiting for the owner to dispatch the QA agent.
+- **Feature 2 QA: done. Verdict PASS WITH NOTES** (`agent-outputs/qa/qa-feature-002-rails-api-skeleton.md`). No blocker, no major. Five documentation findings (2 minor, 3 nits), all in the learning chapters or the report; application code, config, CI and specs verified independently and clean.
+- **Feature 2 fix round 1:** prompt written at `prompts/implementation/feature-002-rails-api-skeleton-fix-r1.md`. Waiting for the owner to dispatch it to the live Feature 2 agent. Covers the five findings plus `permissions: contents: read` (D-066).
+- **Decisions closed by this review:** D-052, D-062 and D-063 moved from Proposed to Accepted (D-063 now records the `--skip-ci` extension). New: D-065 (workflow triggers), D-066 (least-privilege token), D-067 (chapters must be reproducible in order).
+- **After the fix round:** the orchestrator verifies it directly (documentation plus one workflow line, no application code, so no second QA session under D-061), then the owner squash-merges PR #1.
 
 ### Orchestrator pre-review of PR #1 (2026-09-15)
 Not a QA pass; QA still runs. What the orchestrator checked directly:
@@ -63,9 +66,11 @@ Not a QA pass; QA still runs. What the orchestrator checked directly:
 3. Fix rounds if needed (D-054), then the owner squash-merges the PR.
 4. Commit the reports as the next `docs N`, then write the Feature 3 prompt (web skeleton).
 
-### Carry-over notes for Feature 2 / Feature 3
+### Carry-over notes for Feature 3
 - Read the host database port from `POSTGRES_PORT`, so it is configured in one place only.
-- Once `api.yml` and `web.yml` have run on `main`, add them as required status checks in the branch protection (D-060).
+- Apply D-065 in Feature 3: remove the path filters from the `pull_request` triggers of both workflows, keep them on `push`, then add `RuboCop` and `RSpec` (and the web equivalents) as required status checks (D-060).
+- Root `.gitignore` in Feature 3: narrow `tmp/` to `/tmp/` so each app governs its own, and add a repository-wide `*.key` rule (see the stood-down extension prompt).
+- `web.yml` declares `permissions: contents: read` on creation (D-066).
 - At deployment, pick Railway's Postgres 18 image explicitly; its `:latest` tag resolves to 16 (D-058).
 
 ### Counters (D-035, D-053)

@@ -423,6 +423,7 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
 - **Rule:** Before Phase 3 prompts are written, the orchestrator writes `handoff/plan/api-contract.md` with endpoints, request and response shapes, error format, status codes and rate limits. Backend and frontend tasks both build against it, and any change to it is recorded as a decision.
 
 ### D-052 · Proposed — Solid Cache and Solid Queue use the primary Postgres database
+- **Status:** **Accepted** 2026-09-15, after Feature 2 implemented it and QA verified a clean-database rebuild creating the Solid tables in the primary schema.
 - **Rationale:** One database on Railway is simpler and cheaper to run.
 - **Rejected alternative:** the Rails 8 default of separate cache, queue and cable databases. It adds configuration and migrations to manage with no benefit at this traffic level.
 - **Status:** Implemented in Feature 2 unless the owner objects.
@@ -498,13 +499,14 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
 - **Decision:** Keep the linting setup Rails 8 generates, with no extra style plugins for now.
 - **Rationale:** Zero configuration, it is the convention the framework ships, and it avoids spending review time on style debates. Rules can be tightened later if something specific justifies it.
 - **Rejected alternative:** A custom `rubocop-rails` plus `rubocop-rspec` setup. More configuration to maintain, and it tends to produce large mechanical diffs.
-- **Status:** Implemented in Feature 2 unless the owner objects.
+- **Status:** **Accepted** 2026-09-15. Implemented in Feature 2; `.rubocop.yml` inherits the omakase config with no custom rules, and the suite reports no offences.
 
 ### D-063 · Proposed — Rails components skipped in Feature 2
 - **Skipped:** Action Cable (no realtime features), Active Storage (images go directly to Cloudinary, D-023), Action Mailbox (no inbound mail), the Rails default test framework (RSpec is used, D-000), Jbuilder (the serialization approach is decided with the API contract, D-051), and Kamal (deployment is deferred and the target is Railway, D-036).
 - **Kept:** Action Mailer (password reset and contact notifications, D-014), Solid Cache and Solid Queue (D-052), Brakeman and RuboCop (Rails 8 defaults).
 - **Rationale:** Every component kept has a decided use; skipping the rest keeps migrations, configuration and the dependency surface small.
-- **Status:** Implemented in Feature 2 unless the owner objects.
+- **Also skipped, added during Feature 2:** the generated CI files (`--skip-ci`). Rails writes `.github/workflows/ci.yml` and `.github/dependabot.yml` **inside the app directory**, and GitHub only reads workflows from the repository root, so in a monorepo they can never run. Committing a dead workflow beside a live one misleads the next reader. Verified by QA against the Rails generator source.
+- **Status:** **Accepted** 2026-09-15, including the `--skip-ci` extension above.
 
 ### D-064 · Accepted — `handoff/learning/`: a teaching chapter per implementation task
 - **Owner's goal (2026-09-15):** be able to build an app like this alone afterwards, from a written, detailed record of how it was done and why.
@@ -520,3 +522,29 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
   - The orchestrator writing the chapters: it does not see the implementation work first-hand, and it would burn orchestration context.
   - Deriving a guide at the end of the project: the details that matter (what broke, what was almost done wrong) are forgotten by then.
 - **Backfill:** Features 1 and 2 finished before this decision, so their chapters are written retroactively (see the status file).
+
+---
+
+## Feature 2 review outcomes (2026-09-15)
+
+### D-065 · Accepted — Workflow triggers: path filters on pushes, no path filters on pull requests
+- **Problem QA raised:** a path-filtered workflow that does not run reports **no status at all**, not a passing one. Once `RuboCop` and `RSpec` are required checks on `main` (D-060 carry-over), a PR touching only `apps/web/**` would sit permanently pending, because the API workflow never runs and never reports.
+- **Decision:**
+  - `pull_request`: **no path filters.** Both workflows run on every PR, so every required check always reports.
+  - `push` to `main`: **keep the path filters**, since a merged docs or web change need not re-run the API suite.
+- **Rationale:** The repository is readable by everyone, so Actions minutes are free (D-044), and each suite is small. Simplicity beats saving a minute of CI.
+- **Rejected alternatives:**
+  - A companion "skip" job that reports the same check name when paths do not match: the standard GitHub workaround, but it doubles the job definitions and is easy to get subtly wrong.
+  - Not making the checks required: loses the protection that stops a red PR from being merged.
+- **When:** applied in Feature 3, where `web.yml` is created and both workflows can be made consistent, together with the required-checks configuration.
+
+### D-066 · Accepted — GitHub Actions workflows declare `permissions: contents: read`
+- **Decision:** every workflow sets the least-privilege token permission at the workflow level.
+- **Rationale:** Neither job writes anything. On a repository anyone can read, a default-deny token is free hardening.
+- **When:** `api.yml` in the Feature 2 fix round; `web.yml` on creation in Feature 3.
+
+### D-067 · Accepted — Learning chapters must be reproducible in order, not only accurate
+- **Trigger:** QA finding 1 on chapter 02: the chapter told the reader to expect `0 examples, 0 failures` at a point where they had never created the databases, so they would actually hit a connection error. Every individual statement was true for the author, and the sequence still did not work for a reader.
+- **Rule:** a chapter must be followable from the previous chapter's end state with no missing steps. When the author's environment already had state the reader lacks (databases, containers, credentials, installed tools), the chapter must say how the reader gets it.
+- **Also required:** if the end state was produced by a command, the chapter gives the command. If it was done in a web UI, the chapter says so and names the settings. Describing a result without a path to it (QA finding 2 on chapter 01) is not acceptable.
+- **Applies to:** every future chapter, and to the QA checklist that verifies them.
