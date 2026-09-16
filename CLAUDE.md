@@ -20,7 +20,8 @@ Tintara Lab is a portfolio web app for a photographer (Luisa Sanabria, Medellín
 | `handoff/prompts/qa/` | One prompt per QA task | Orchestrator |
 | `handoff/agent-outputs/implementation/` | One report per implementation task | Implementation agents |
 | `handoff/agent-outputs/qa/` | One report per QA task | QA agents |
-| `handoff/templates/` | Required shapes for prompts and reports | Orchestrator |
+| `handoff/learning/` | One teaching chapter per task: how to build this app step by step (D-064) | Implementation agents |
+| `handoff/templates/` | Required shapes for prompts, reports and learning chapters | Orchestrator |
 | `handoff/Answers.md`, `handoff/FinalAnswers.md` | Owner's discovery answers (read-only) | Owner |
 | `handoff/PC view mockup.jpeg`, `handoff/mobile view mockup.jpeg` | Visual reference (read-only) | Owner |
 
@@ -43,11 +44,13 @@ Tintara Lab is a portfolio web app for a photographer (Luisa Sanabria, Medellín
 - Does exactly what its prompt says: nothing more, nothing less.
 - Works on its own branch and opens a PR. **Never merges.**
 - Writes its report to `handoff/agent-outputs/implementation/` using `handoff/templates/implementation-output.md`.
+- Writes its learning chapter to `handoff/learning/` using `handoff/templates/learning-chapter.md` (D-064). Both files are committed inside its own PR.
 - **Does not edit** the decision log, status, plan or prompts. Proposals and questions go in the report.
 
 ### QA agent
 - Verifies one PR against its prompt's acceptance criteria, the decision log and this file.
 - **Does not change application code** and does not push to the PR branch.
+- Also verifies the learning chapter: every command and file content in it must match what the PR actually contains, and its explanations must be correct (D-064). A wrong chapter is a finding like any other.
 - Writes its report to `handoff/agent-outputs/qa/` using `handoff/templates/qa-output.md`, with a verdict: `PASS`, `PASS WITH NOTES` or `FAIL`.
 
 ### Owner (human)
@@ -68,7 +71,7 @@ Tintara Lab is a portfolio web app for a photographer (Luisa Sanabria, Medellín
 
 ## 5. Git and PR conventions (D-021, D-034, D-035, D-048, D-049)
 
-- **Base branch:** `main`. The repo is the private GitHub repo `tintara-lab`.
+- **Base branch:** `main`. The repo is `Myepes05/tintara-lab`, readable by everyone since 2026-09-15 (D-059), so never commit anything that should stay unpublished.
 - **Branch names:** `feature/N-<slug>` and `fix/N-<slug>`. The prompt gives you N and the slug.
 - **PR title** = squash commit on main. It must be exactly `Feature N: <one-line summary>` or `fix N: <one-line summary>`, with that casing.
 - **Commits inside the branch** use the same prefix: `Feature N: add specs for ...`, `Feature N: implement ...`.
@@ -80,7 +83,7 @@ Tintara Lab is a portfolio web app for a photographer (Luisa Sanabria, Medellín
 
 ### Committing handoff documents (D-053)
 - **Handoff-only changes** (prompts, status, decisions, plan, templates, QA reports) are committed **directly to `main`** as `docs N: <brief summary>`. Only the orchestrator does this, only with the owner's approval. `docs` has its own counter, and N counts commits.
-- **Implementation agents** commit only their own report file, inside their PR. They touch no other `handoff/` file unless their prompt says so.
+- **Implementation agents** commit only their own report file and their learning chapter, inside their PR. They touch no other `handoff/` file unless their prompt says so.
 - **QA agents** write their report as an **untracked file and never commit it**. When done, switch back to `main`; the orchestrator commits the report.
 - **Before starting**, confirm `git status` on `main` is clean and `git pull` succeeds. If `main` has uncommitted handoff changes, stop and report it.
 
@@ -139,6 +142,17 @@ Commands are filled in by the tasks that create them. If a command here is missi
 - **Postgres** (from the repo root, after `cp .env.example .env`): start `docker compose up -d` · health `docker compose ps` and `docker compose exec db pg_isready` · stop `docker compose down` (keeps the `db_data` volume) · logs `docker compose logs -f db`
 - **API:** _defined by Feature 2_
 - **Web:** _defined by Feature 3_
+
+## 7b. The learning chapter (D-064)
+
+Every implementation task ends with a chapter in `handoff/learning/`, written with `handoff/templates/learning-chapter.md`. Its purpose is that the owner can rebuild an app like this alone, so:
+
+- **Teach, don't report.** The report proves the work; the chapter explains how to do it. Don't just restate the report.
+- **Explain terms** the first time they appear, and say why each choice was made, including the ones that were rejected.
+- **Use real content**: the actual commands you ran and the actual files you wrote. Never invent illustrative examples.
+- **Write down the traps**: what failed first, what looks right but isn't, what you deliberately did not do and why. This is the most valuable section.
+- **Make it reproducible**: someone following the chapter from the previous chapter's end state must reach the same result.
+- Name the file `NN-<slug>.md`, where NN matches the task order, and add its row to `handoff/learning/README.md`.
 
 ## 8. Report requirements (summary)
 

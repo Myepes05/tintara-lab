@@ -17,9 +17,10 @@ Read `CLAUDE.md`, the implementation prompt `handoff/prompts/implementation/feat
 2. Verify each acceptance criterion from the implementation prompt.
 3. Verify it complies with the referenced decisions.
 4. Review spec quality: are behaviors and edge cases covered? Are spec commits before implementation commits?
-5. Task-specific checks:
+5. Verify the learning chapter `handoff/learning/NN-<slug>.md` (D-064): commands and file contents match the PR, explanations are technically correct, the steps are reproducible from the previous chapter's end state, and the index row exists.
+6. Task-specific checks:
    - ...
-6. Security, scope creep, committed secrets, and conventions (branch name, PR title, English only).
+7. Security, scope creep, committed secrets, and conventions (branch name, PR title, English only).
 
 ## Verdict
 `PASS` / `PASS WITH NOTES` / `FAIL`, with justification.

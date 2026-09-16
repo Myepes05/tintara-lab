@@ -2,6 +2,7 @@
 
 **Type:** Implementation · **Phase:** X · **Branch:** `feature/N-<slug>` · **PR title:** `Feature N: <summary>`
 **Report file:** `handoff/agent-outputs/implementation/feature-NNN-<slug>.md` (use `handoff/templates/implementation-output.md`)
+**Learning chapter:** `handoff/learning/NN-<slug>.md` (use `handoff/templates/learning-chapter.md`, see CLAUDE.md §7b)
 
 ## Before you start
 Read `CLAUDE.md`, `handoff/status/current-status.md`, and these decisions: D-XXX, D-YYY.
@@ -26,6 +27,7 @@ Depends on: <previous tasks and their reports>.
 - [ ] ...
 - [ ] Lint and tests pass locally (outputs included in the report)
 - [ ] Spec commit(s) come before implementation commit(s)
+- [ ] Learning chapter written, reproducible, and its row added to `handoff/learning/README.md`
 - [ ] PR opened with the exact title; not merged
 
 ## Verification commands

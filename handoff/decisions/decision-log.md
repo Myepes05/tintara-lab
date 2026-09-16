@@ -505,3 +505,18 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
 - **Kept:** Action Mailer (password reset and contact notifications, D-014), Solid Cache and Solid Queue (D-052), Brakeman and RuboCop (Rails 8 defaults).
 - **Rationale:** Every component kept has a decided use; skipping the rest keeps migrations, configuration and the dependency surface small.
 - **Status:** Implemented in Feature 2 unless the owner objects.
+
+### D-064 · Accepted — `handoff/learning/`: a teaching chapter per implementation task
+- **Owner's goal (2026-09-15):** be able to build an app like this alone afterwards, from a written, detailed record of how it was done and why.
+- **Decision:**
+  - Each implementation task produces `handoff/learning/NN-<slug>.md`, written with `handoff/templates/learning-chapter.md`.
+  - The author is the **implementation agent that did the work**, and the chapter is committed inside its own PR, alongside its report.
+  - The QA agent verifies the chapter against the PR: commands, file contents, technical correctness, reproducibility.
+  - `handoff/learning/README.md` indexes the chapters.
+- **Chapter content:** what is being built and why, concepts explained from scratch, the real step-by-step sequence, annotated walkthroughs of the important files, the decisions with their rejected alternatives, the traps and mistakes, self-verification commands, and a glossary.
+- **Rationale:** Reports are written for verification, not for teaching, and they assume context a learner does not have. The implementation agent is the only one that knows what it tried, rejected and avoided; a documentation agent writing later from the diff would have to guess at that.
+- **Rejected alternatives:**
+  - A separate documentation agent per task: an extra session each time, and it would infer intent from the diff instead of knowing it.
+  - The orchestrator writing the chapters: it does not see the implementation work first-hand, and it would burn orchestration context.
+  - Deriving a guide at the end of the project: the details that matter (what broke, what was almost done wrong) are forgotten by then.
+- **Backfill:** Features 1 and 2 finished before this decision, so their chapters are written retroactively (see the status file).

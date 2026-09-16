@@ -21,6 +21,9 @@
 ## Spec review
 <Coverage of behaviors and edge cases, spec-first commit order, quality issues.>
 
+## Learning chapter review
+<Accuracy of commands and file contents, correctness of explanations, reproducibility, index row.>
+
 ## Findings
 | # | Severity | Finding | Location | Steps to reproduce / evidence | Suggested fix |
 |---|---|---|---|---|---|

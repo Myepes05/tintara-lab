@@ -33,6 +33,11 @@
 ## Deviations from the prompt
 <None, or each deviation and why.>
 
+## Learning chapter
+- **File:** `handoff/learning/NN-<slug>.md`
+- **Index updated:** yes / no
+- **Traps documented:** <one line on what the chapter warns about>
+
 ## Questions for the owner
 <None, or a numbered list.>
 

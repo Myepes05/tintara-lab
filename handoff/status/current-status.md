@@ -34,8 +34,25 @@
 - **D-061 accepted:** QA agents are dispatched only for tasks that produce application code. Feature 1 had none; QA resumes with Feature 2.
 - Still open, not urgent: GitHub Issues are enabled on a repository anyone can read; consider disabling them.
 
+### New in this session (2026-09-15)
+- **D-064 accepted:** `handoff/learning/` now holds a teaching chapter per implementation task, written by the implementation agent inside its own PR and verified by QA. `CLAUDE.md` §2, §3, §5 and the new §7b, plus all four templates, were updated; `handoff/templates/learning-chapter.md` was added.
+- **Backfill in progress:** Features 1 and 2 predate D-064, so their chapters are backfilled by the still-live Feature 2 agent through `prompts/implementation/feature-002-rails-api-skeleton-ext-learning.md`, committed to the open PR #1. QA then verifies code and both chapters in one pass.
+
 ### In progress
-- **Feature 2** (Rails API skeleton): prompt written at `prompts/implementation/feature-002-rails-api-skeleton.md`. Waiting for the owner to dispatch the implementation agent.
+- **Feature 2** (Rails API skeleton): implementation finished. PR #1 https://github.com/Myepes05/tintara-lab/pull/1, branch `feature/2-rails-api-skeleton`, 5 commits, spec commit `d490ca9` before implementation `cdd649e`. Report delivered. The orchestrator has not reviewed the code yet.
+- **Feature 2 extension:** done. Chapters 01 and 02 committed to PR #1 as `981349e`, documentation only.
+- **Feature 2 QA:** prompt written at `prompts/qa/qa-feature-002-rails-api-skeleton.md`. Waiting for the owner to dispatch the QA agent.
+
+### Orchestrator pre-review of PR #1 (2026-09-15)
+Not a QA pass; QA still runs. What the orchestrator checked directly:
+- 6 commits, spec `d490ca9` before implementation `cdd649e`. CI green on all three pushed heads.
+- Solid Cache and Solid Queue tables live in `db/schema.rb` on the primary database; no separate cache or queue database is declared (D-052 satisfied).
+- `database.yml` holds no credentials; dotenv reads the root `.env` and is assigned before the `Application` class.
+- Health endpoint returns only `status` and `time`, and a spec asserts exactly that.
+- Pinned actions verified upstream: `actions/checkout@v7` (latest v7.0.1) and `ruby/setup-ruby@v1` (that action's own convention). The chapter's claim that `setup-ruby` has no `ruby-version-file` input was verified against its `action.yml`: correct.
+- Learning chapters are substantial and specific; the traps sections describe real failures.
+
+**Risk found by the orchestrator, outside the PR:** the root `.gitignore` does not ignore `*.key`. Inside `apps/api` the generated `.gitignore` covers `/config/*.key`, but on `main`, where that file does not exist, `apps/api/config/master.key` shows as an untracked file and `git add -A` would stage it. On a repository readable by everyone (D-059) that would publish the key that decrypts the credentials file. Proposed remedy: add a repository-wide key rule to the root `.gitignore` during the Feature 2 fix round.
 - New proposals the owner can object to: D-062 (RuboCop omakase), D-063 (Rails components skipped).
 
 ### Next
