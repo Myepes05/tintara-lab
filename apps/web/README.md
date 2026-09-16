@@ -17,16 +17,16 @@ feature.
 
 Run all of these from `apps/web`.
 
-| Command | What it does |
-|---|---|
-| `pnpm install` | Install dependencies from `pnpm-lock.yaml` |
-| `pnpm dev` | Development server with hot module replacement, http://localhost:5173 |
-| `pnpm build` | Production build into `build/client` and `build/server` |
-| `pnpm start` | Serve the production build, http://localhost:3000 |
-| `pnpm typecheck` | Generate route types, then run `tsc` |
-| `pnpm lint` | ESLint, zero warnings allowed |
-| `pnpm format` / `pnpm format:check` | Prettier |
-| `pnpm test` | Jest with React Testing Library |
+| Command                             | What it does                                                          |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| `pnpm install`                      | Install dependencies from `pnpm-lock.yaml`                            |
+| `pnpm dev`                          | Development server with hot module replacement, http://localhost:5173 |
+| `pnpm build`                        | Production build into `build/client` and `build/server`               |
+| `pnpm start`                        | Serve the production build, http://localhost:3000                     |
+| `pnpm typecheck`                    | Generate route types, then run `tsc`                                  |
+| `pnpm lint`                         | ESLint, zero warnings allowed                                         |
+| `pnpm format` / `pnpm format:check` | Prettier                                                              |
+| `pnpm test`                         | Jest with React Testing Library                                       |
 
 ## Environment
 

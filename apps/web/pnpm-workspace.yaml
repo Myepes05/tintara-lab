@@ -6,5 +6,5 @@
 # compile at install time. Denying them keeps `pnpm install` from executing
 # third-party code on developer machines and in CI.
 allowBuilds:
-  '@parcel/watcher': false
+  "@parcel/watcher": false
   unrs-resolver: false
