@@ -240,3 +240,161 @@ curl -si localhost:3000/api/v1/health
 # 4. The clean-database path
 bin/rails db:drop db:prepare && bundle exec rspec
 ```
+
+---
+
+## Fix round 1 — 2026-09-15
+
+Prompt: `handoff/prompts/implementation/feature-002-rails-api-skeleton-fix-r1.md`, against QA report `handoff/agent-outputs/qa/qa-feature-002-rails-api-skeleton.md` (PASS WITH NOTES). QA filed no `blocker` and no `major`, so nothing here was required by D-054; the owner chose to fix all five findings plus the workflow hardening. Same branch, same PR (#1), not merged.
+
+Commits added:
+```
+3e79ee3 Feature 2: fix the API workflow to declare a least-privilege token
+e8c5648 Feature 2: fix the QA findings in the learning chapters and the report
+```
+
+### Findings addressed
+
+| # | Sev. | What changed | Where |
+|---|---|---|---|
+| 1 | minor | Added `bin/rails db:prepare` as an explicit command at the end of step 4, after the Solid migrations exist and before the first `rspec` run, with an explanation of what it does and of the fact that from development it prepares the test database too. Step 5 keeps the `0 examples, 0 failures` expectation and now says outright that it only holds because step 4 ran `db:prepare`, quoting the error you get otherwise. The expected output was captured from a real first-time run, not paraphrased | `handoff/learning/02-rails-api-skeleton.md`, steps 4 and 5 |
+| 2 | minor | Step 12 now gives the two commands that produced the end state: `gh repo edit --visibility public --accept-visibility-change-consequences` and `gh api -X PUT .../branches/main/protection --input`, with the payload, a table of what each key does, why `PUT` replaces rather than merges, and an explicit note that a reader who keeps the repository private and pays for a plan skips only the first command. The `enforce_admins: false` rationale (D-053) was already there and is now cross-referenced from the payload table | `handoff/learning/01-monorepo-bootstrap.md`, step 12 |
+| 3 | nit | Section 8's `git log` example is now `git log --oneline main..HEAD | tail -4`, labelled "the branch's first four commits … the implementation report, these chapters and the QA fix round follow them". It stays true as the branch grows, which is the variant the prompt preferred | `handoff/learning/02-rails-api-skeleton.md`, section 8 |
+| 4 | nit | Step 6's narration reworded: the route does not exist, so Rails answers with a 404 `text/html` error page — about 67 KB of HTML, not an empty body — and `response.parsed_body` parses it into a Nokogiri document, which has no JSON keys, so `parsed_body.keys` is `[]`. The quoted RSpec output is untouched | `handoff/learning/02-rails-api-skeleton.md`, step 6 |
+| 5 | nit | "and the (absent) default test task" dropped from follow-up 3. Chapter 02's mention of `bin/ci` was tightened the same way: setup, RuboCop, bundler-audit and Brakeman, and no test step because `--skip-test` meant the generator never wrote one | this report, "Suggested follow-ups" 3; `handoff/learning/02-rails-api-skeleton.md`, section 7 |
+
+Finding 4 was verified rather than assumed. A throwaway request spec against a non-existent route reported `STATUS: 404`, `MEDIA_TYPE: text/html`, `BODY_LENGTH: 67471`, `PARSED_CLASS: Nokogiri::HTML4::Document`, `KEYS: []`. The probe file was deleted immediately; it is in no commit.
+
+### The chapter-wide reproducibility re-read (D-067)
+
+I re-read chapter 02 steps 1 to 10 as someone whose only prior state is chapter 01's end state. QA's finding 1 was not the only gap — **six more were found and fixed**:
+
+| Assumed state | Why a reader does not have it | Fix |
+|---|---|---|
+| The `rails` gem is installed | Chapter 01 verified Ruby 3.4.3 and nothing else; there was no Rails app yet, so it never installed Rails. `rails new` in step 1 comes from that gem | Section 3 now runs `gem install rails -v "~> 8.1"` and `rails -v`, and explains why the gem is global while the project's version is pinned in its `Gemfile` |
+| A root `.env` exists and the container is already healthy | Chapter 01 creates `.env`, but a reader picking the chapter up later may not have it, and `docker compose up -d` returns before Postgres accepts connections | Section 3 adds `cp .env.example .env` and `docker compose ps` with "wait until (healthy)", and says what a too-early command looks like. Step 3 repeats the `.env` dependency where `database.yml` first needs it |
+| The reader knows which directory each step runs in | Step 1 said "from the repository root"; steps 2 to 8 are inside `apps/api` and step 9 is back at the root, and none of that was written down | Section 3 states the pattern, step 1 and step 9 name their directory, and step 2 opens with the `cd apps/api` |
+| `rm -rf apps/api/.git` gets done | It was only in a prose aside after the command block, easy to read past | It is now a line in step 1's command block, with the aside kept as the explanation |
+| `git add` paths are relative to the repository root | Step 6 said `git add apps/api/spec/requests`, which fails from `apps/api` — the very directory the step runs in. Step 7 said "then commit" with no `git add` at all | Step 6 is `git add spec/requests`; step 7 stages its two files explicitly; a note says git works from any subdirectory and that these paths are relative to `apps/api` |
+| The scaffold and the workflow get committed | Section 8 shows four commits, but only two of them (the spec and the implementation) were ever produced by a step. The reader reaches step 10 with uncommitted work and a `git push` that pushes nothing | Step 5 ends by committing the scaffold, step 9 ends by committing the workflow and the `CLAUDE.md` §7 line, and step 10 opens with `git status` showing a clean tree |
+| `bin/rails server` returns | It does not; the next line was `curl` against a server that was never started | Step 8 splits the two commands and says to use a second terminal and Ctrl-C afterwards |
+
+Two smaller gaps in the same pass: step 4 pointed at section 5 for "four edits, then the migrations" without ever telling the reader what to *do* — it now names the three file edits, says the Solid installers already left `db/cache_schema.rb` and `db/queue_schema.rb` in the app, and shows how they become migrations before being deleted; and step 10's `--body-file <filled-in pull request template>` placeholder is now a real sequence (copy `.github/pull_request_template.md`, fill it, pass it).
+
+Nothing else was found. Steps 1, 3 and 7 need no state beyond what the previous step leaves.
+
+One addition beyond the five findings: section 7 gained trap 12, which states D-067 as a lesson — a chapter can be true line by line and still not run, and the habit that catches it is re-reading the steps as a reader who has only finished the previous chapter. It belongs in the chapter that produced the rule.
+
+### Workflow permissions (D-066)
+
+`.github/workflows/api.yml` now declares, at workflow level and directly below the triggers:
+
+```yaml
+# Least privilege for the job token: neither job writes anything back to the
+# repository, and this repository is readable by everyone (D-059, D-066).
+permissions:
+  contents: read
+```
+
+Chapter 02's walkthrough covers it: what `GITHUB_TOKEN` is, that naming any scope turns the token default-deny for all the others, that a workflow-level block can be overridden per job, and why it matters here. It also states a fact I checked rather than assumed:
+
+```
+$ gh api repos/Myepes05/tintara-lab/actions/permissions/workflow
+{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}
+```
+
+The repository default is **already** `read`, so this line does not tighten a permissive token today. What it does is move the guarantee into the file: that default is a repository setting any admin can flip to `write`, at which point every workflow that declares nothing silently gets a writable token with no commit and no review. The chapter says exactly that rather than implying the line fixed an open hole. A glossary entry and a row in the decisions table were added, and D-066 was added to the chapter's header.
+
+### Commands run and results
+
+```
+$ cd apps/api && bundle exec rspec
+.....
+Finished in 0.12574 seconds (files took 2.83 seconds to load)
+5 examples, 0 failures
+
+$ bundle exec rubocop
+28 files inspected, no offenses detected
+
+$ ruby -ryaml -e "d = YAML.safe_load_file('.github/workflows/api.yml', aliases: true); puts 'YAML OK'; p d['permissions']"
+YAML OK
+{"contents" => "read"}
+
+# The chapter's api.yml excerpt is byte-identical to the file (re-checked after the edit)
+$ python3 - <<'PY'   # extract the yaml block from section 5 and compare
+IDENTICAL
+
+# db:prepare really does prepare both databases, and the quoted output is real:
+# schema.rb moved aside, db:drop db:prepare re-run, output captured, schema.rb
+# byte-compared afterwards (identical) and the working tree left clean.
+$ bin/rails db:drop db:prepare
+Dropped database 'tintara_lab_development'
+Dropped database 'tintara_lab_test'
+Created database 'tintara_lab_development'
+Created database 'tintara_lab_test'
+== 20260915000001 CreateSolidCacheTables: migrating ===========================
+...
+== 20260915000002 CreateSolidQueueTables: migrated (0.1549s) ==================
+(then both migrations again, against the test database)
+
+# Scope: no new application change since the earlier Feature 2 commits
+$ git diff --stat 981349e HEAD -- apps docker-compose.yml
+(empty)
+
+$ git diff 981349e HEAD --name-only
+.github/workflows/api.yml
+handoff/agent-outputs/implementation/feature-002-rails-api-skeleton.md
+handoff/learning/01-monorepo-bootstrap.md
+handoff/learning/02-rails-api-skeleton.md
+
+$ git log --oneline main..HEAD
+e8c5648 Feature 2: fix the QA findings in the learning chapters and the report
+3e79ee3 Feature 2: fix the API workflow to declare a least-privilege token
+981349e Feature 2: add the learning chapters for Features 1 and 2
+af2b459 Feature 2: add the implementation report
+0e187fc Feature 2: add the API CI workflow and document the commands
+cdd649e Feature 2: implement the health endpoint under /api/v1
+d490ca9 Feature 2: add specs for the health endpoint
+7d916c7 Feature 2: scaffold the Rails 8.1 API app with RSpec, RuboCop and Postgres
+```
+
+### Acceptance criteria
+
+- [x] Findings 1 to 5 addressed as described
+- [x] Chapter 02 re-read end to end for reader-state assumptions (D-067); six further gaps found and fixed, listed above
+- [x] `permissions: contents: read` at workflow level in `api.yml`, explained in chapter 02
+- [x] No change to application code, Rails config, specs, `docker-compose.yml`, workflow triggers or the root `.gitignore`
+- [x] `bundle exec rspec` and `bundle exec rubocop` pass locally, output above
+- [x] CI green on the new head commit — see below
+- [x] Commits prefixed `Feature 2: fix ...`, pushed to PR #1, not merged
+
+### CI on the new head
+
+Both fix commits were pushed together, so GitHub ran the workflow once, on the head:
+
+```
+$ gh run list --branch feature/2-rails-api-skeleton --limit 4 \
+    --jq '.[]|"\(.headSha[0:7]) \(.event) \(.conclusion) run \(.databaseId)"'
+e8c5648 pull_request success run 35057568130      <- this round
+981349e pull_request success run 35054560655
+af2b459 pull_request success run 35053085363
+0e187fc pull_request success run 35052956324
+
+$ gh run view 35057568130 --json conclusion,headSha,jobs
+{"conclusion":"success","headSha":"e8c5648bb8eda8d1cf6bf91ebbebe2fbc5cade8d",
+ "jobs":[{"name":"RuboCop","conclusion":"success"},{"name":"RSpec","conclusion":"success"}]}
+```
+
+Run: https://github.com/Myepes05/tintara-lab/actions/runs/35057568130 — green with the `permissions:` block in place, which is the point: the token was narrowed and nothing in either job needed more than it now has.
+
+### Disagreements
+
+None. Every finding was correct as filed. Two notes on how they were carried out rather than objections to them:
+
+1. **Finding 2's payload is a reconstruction, and the chapter says so.** The fix prompt says the Feature 1 report has the commands verbatim. It has the `gh repo edit` line and the verification query verbatim, but the `PUT` call is recorded as `--input <payload>` — the JSON body was never written down. Rather than invent one, I read the live rule back with `gh api repos/Myepes05/tintara-lab/branches/main/protection` and wrote the payload that reproduces exactly those fields (`required_approving_review_count: 0`, `dismiss_stale_reviews: true`, `require_code_owner_reviews: false`, `enforce_admins: false`, `required_linear_history: true`, `allow_force_pushes: false`, `allow_deletions: false`, `required_conversation_resolution: true`, `required_status_checks: null`, `restrictions: null`). The chapter carries a caveat saying it is what the repository has, not necessarily character-for-character what was typed. If the owner has the original payload, swapping it in is a one-line change.
+2. **Finding 3's note mentions the fix round.** The prompt's preferred wording was "the report, the chapters and this fix round follow"; QA's own suggestion said "the report and this chapter". I used the prompt's, which stays true through any further rounds.
+
+### Questions for the owner
+
+1. **D-065's trigger change is deliberately not here.** The fix prompt puts it in Feature 3. Until then, `api.yml` still path-filters `pull_request`, so the interaction QA described in its question 2 is still live if required checks are configured before Feature 3 lands. Nothing to do now — flagging that the ordering matters.
+2. **Chapter 02 section 9 still points at D-060** for the required-status-checks loose end and does not mention D-065, because D-065 is applied in Feature 3 and the chapter should describe the state its own PR produces. Chapter 03 is the natural place to record the change. Say the word if you would rather chapter 02 forward-reference it now.
