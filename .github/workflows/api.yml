@@ -1,5 +1,10 @@
 name: API
 
+# D-065: pull requests run this workflow unconditionally, so every required
+# check always reports a status. A path-filtered workflow that does not run
+# reports nothing at all, and a required check with no status blocks the PR
+# forever. Pushes to main keep the path filter: a merged web or docs change
+# does not need the API suite re-run.
 on:
   push:
     branches: [ main ]
@@ -8,9 +13,6 @@ on:
       - ".github/workflows/api.yml"
   pull_request:
     branches: [ main ]
-    paths:
-      - "apps/api/**"
-      - ".github/workflows/api.yml"
 
 # Least privilege for the job token: neither job writes anything back to the
 # repository, and this repository is readable by everyone (D-059, D-066).

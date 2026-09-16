@@ -1,0 +1,166 @@
+name: Web
+
+# D-065: pull requests run this workflow unconditionally, so every required
+# check always reports a status. A path-filtered workflow that does not run
+# reports nothing at all, and a required check with no status blocks the PR
+# forever. Pushes to main keep the path filter: a merged API or docs change
+# does not need the web suite re-run.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    branches: [ main ]
+
+# Least privilege for the job token: no job writes anything back to the
+# repository, and this repository is readable by everyone (D-059, D-066).
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/web
+
+# Every job repeats the same five setup steps on purpose, like api.yml does:
+# jobs run on separate machines, and GitHub reports each one as its own check.
+jobs:
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      # The Node version comes from apps/web/.node-version, the same file
+      # developers use locally.
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.node-version
+
+      # corepack reads packageManager from package.json and provides exactly
+      # that pnpm version (D-021). It must run after setup-node, so the shim
+      # lands in the Node installation that is actually on PATH.
+      - name: Enable pnpm through corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.node-version
+
+      - name: Enable pnpm through corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm typecheck
+
+  test:
+    name: Jest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.node-version
+
+      - name: Enable pnpm through corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the tests
+        run: pnpm test
+
+  # Not in D-033's list, and added on purpose: the rule that keeps server-only
+  # modules out of the browser bundle (D-039, D-045) is enforced by the build,
+  # and by nothing else. Without this job, a PR that breaks it would pass CI.
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.node-version
+
+      - name: Enable pnpm through corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for production
+        run: pnpm build
