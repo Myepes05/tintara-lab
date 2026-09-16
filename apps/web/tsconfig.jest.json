@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // ts-jest compiles each file on its own and hands CommonJS to Jest, so the
+    // app's ES module settings have to be overridden here. verbatimModuleSyntax
+    // forbids the import elision that a CommonJS emit depends on.
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "verbatimModuleSyntax": false,
+    "isolatedModules": false
+  }
+}
