@@ -1,82 +1,59 @@
 # Current Status
 
-**Last updated:** 2026-09-15 by the orchestrator (session 1)
+**Last updated:** 2026-09-17 by the orchestrator (session 1)
 
-## Current stage: Phase 1 — Foundation · Feature 1 delivered, Feature 2 not started
+## Current stage: Phase 1 — Foundation · Feature 3 in QA
 
-### Done
-- **Discovery and planning complete.** Decisions D-000 to D-061. `CLAUDE.md`, `handoff/templates/` and `plan/master-plan.md` v1 are in place.
-- **Feature 1 (monorepo bootstrap): completed.** Commit `ab52b86` on `main`, pushed to https://github.com/Myepes05/tintara-lab
-  - Root scaffolding: `.gitignore`, `.editorconfig`, `README.md`, `.env.example`, `docker-compose.yml` (Postgres 18), `.github/pull_request_template.md`, `apps/.gitkeep`.
-  - `CLAUDE.md` §7 now lists the real Postgres commands.
-  - Repository merge settings: squash only, squash commit title taken from the PR title.
-  - Report: `agent-outputs/implementation/feature-001-monorepo-bootstrap.md` (still untracked; commit it as `docs 1`).
-- **Owner decisions taken during Feature 1:** Postgres 18 (D-058); repository visibility opened to everyone and `main` protected (D-059, D-060).
+## Where things stand
 
-### Orchestrator verification of Feature 1 (2026-09-15, in place of a QA agent — see D-061)
-| Check | Result |
-|---|---|
-| `git log` | exactly one commit, `ab52b86 Feature 1: push the first commit of the monorepo` |
-| `git ls-files` / `git status` | 25 files tracked; only the untracked report; no `.env`, no `.DS_Store` |
-| `.gitignore` | correct, including the `.vscode/*` + `!.vscode/extensions.json` pattern |
-| `docker-compose.yml` | `postgres:18`, no secret literals, `${POSTGRES_PORT:-5432}`, healthcheck, named volume mounted at `/var/lib/postgresql` (required by Postgres 18 images) |
-| `.env.example` | three documented variables, development-only placeholders |
-| `README.md`, PR template | complete and matching the prompt |
-| `CLAUDE.md` §7 | Postgres line updated; API and Web lines untouched |
-| Repository settings | `visibility: PUBLIC`, squash-only, squash title = PR title |
-| Branch protection | active: PR required (0 approvals), linear history, no force pushes, no deletions, conversation resolution required, administrators not included |
-| Container health | not re-run by the orchestrator: the Docker daemon was stopped. The report has the evidence (healthy, PostgreSQL 18.6, `pg_isready` accepting connections) |
+| Task | State | Where |
+|---|---|---|
+| Discovery and planning | Done | Decisions D-000 to D-070 · `plan/master-plan.md` v1 · `CLAUDE.md` · `templates/` |
+| Feature 1 — monorepo bootstrap | **Merged** (`ab52b86`, direct to `main` per D-049) | Verified by the orchestrator, no QA agent (D-061) |
+| Feature 2 — Rails API skeleton | **Merged** (`af4afec`, PR #1) | QA: PASS WITH NOTES, all findings fixed in fix round 1 |
+| Feature 3 — web skeleton | **Implementation done, QA pending** | PR #2, branch `feature/3-web-skeleton` |
+| Learning chapters | 01, 02 merged · 03 in PR #2 | `learning/` (D-064, D-067) |
 
-**Verdict:** Feature 1 meets every acceptance criterion. No blocking findings.
+## Feature 3 — detail
+- **Orchestrator verification (2026-09-17):**
+  - All six CI checks pass: `ESLint`, `TypeScript`, `Jest`, `Build`, `RuboCop` and `RSpec`. The last two running on a web-only PR proves D-065 works.
+  - Spec commit `204cf7e` precedes implementation `3e1052e`.
+  - No `.env`, key file or build output is tracked.
+  - `server-config.server.ts` exists and fails loudly on missing variables.
+  - Scope outside `apps/web`: both workflows, the root `.gitignore`, the `CLAUDE.md` §7 Web line, two empty `apps/api/tmp` `.keep` files, the report, chapter 03 and its index row.
+- **The report's ten deviations are accepted** (D-069).
+- **QA prompt:** `prompts/qa/qa-feature-003-web-skeleton.md`. Waiting for the owner to dispatch it.
 
-### Owner decisions on 2026-09-15
-- **Repository visibility (D-059):** keep it as it is; revisit making it private later. The orchestrator's concern stays on record.
-- **D-061 accepted:** QA agents are dispatched only for tasks that produce application code. Feature 1 had none; QA resumes with Feature 2.
-- Still open, not urgent: GitHub Issues are enabled on a repository anyone can read; consider disabling them.
+## Next
+1. The owner dispatches the Feature 3 QA agent from a new session.
+2. The orchestrator reviews the QA report; fix rounds per D-054.
+3. The owner squash-merges PR #2.
+4. Once both workflows have run on `main`: configure the six required status checks (D-070). **Waiting for the owner to confirm `strict: false`.** The full command is in the Feature 3 report.
+5. Phase 2 begins with Feature 4 (API security baseline).
 
-### New in this session (2026-09-15)
-- **D-064 accepted:** `handoff/learning/` now holds a teaching chapter per implementation task, written by the implementation agent inside its own PR and verified by QA. `CLAUDE.md` §2, §3, §5 and the new §7b, plus all four templates, were updated; `handoff/templates/learning-chapter.md` was added.
-- **Backfill in progress:** Features 1 and 2 predate D-064, so their chapters are backfilled by the still-live Feature 2 agent through `prompts/implementation/feature-002-rails-api-skeleton-ext-learning.md`, committed to the open PR #1. QA then verifies code and both chapters in one pass.
+## Open owner decisions
+- **D-070:** `strict: false` for required status checks (recommended).
+- **Not urgent:** GitHub Issues are enabled on a repository anyone can read; consider disabling them.
 
-### In progress
-- **Feature 2** (Rails API skeleton): implementation finished. PR #1 https://github.com/Myepes05/tintara-lab/pull/1, branch `feature/2-rails-api-skeleton`, 5 commits, spec commit `d490ca9` before implementation `cdd649e`. Report delivered. The orchestrator has not reviewed the code yet.
-- **Feature 2 extension:** done. Chapters 01 and 02 committed to PR #1 as `981349e`, documentation only.
-- **Feature 2 QA: done. Verdict PASS WITH NOTES** (`agent-outputs/qa/qa-feature-002-rails-api-skeleton.md`). No blocker, no major. Five documentation findings (2 minor, 3 nits), all in the learning chapters or the report; application code, config, CI and specs verified independently and clean.
-- **Feature 2 fix round 1:** prompt written at `prompts/implementation/feature-002-rails-api-skeleton-fix-r1.md`. Waiting for the owner to dispatch it to the live Feature 2 agent. Covers the five findings plus `permissions: contents: read` (D-066).
-- **Decisions closed by this review:** D-052, D-062 and D-063 moved from Proposed to Accepted (D-063 now records the `--skip-ci` extension). New: D-065 (workflow triggers), D-066 (least-privilege token), D-067 (chapters must be reproducible in order).
-- **After the fix round:** the orchestrator verifies it directly (documentation plus one workflow line, no application code, so no second QA session under D-061), then the owner squash-merges PR #1.
+## Carry-over notes for later features
+- **Feature 4:** `config/environments/test.rb` uses `:null_store`; rate-limit specs need a real cache store in test.
+- **Phase 4, first loader:** Vite does not load `.env` into `process.env`, so development needs a way to supply `API_INTERNAL_URL` and `API_INTERNAL_TOKEN` (for example `node --env-file`).
+- **Feature 14 or 18:** `root.tsx`'s `ErrorBoundary` still has the template's English text; user-facing strings must be Spanish.
+- **Dependency upkeep:** bump React Router to 8.4.x and `@types/node` once they are past pnpm's release-age window. Node 25+ no longer bundles corepack, so revisit CI and `CLAUDE.md` when upgrading Node.
+- **When real components land:** consider `eslint-plugin-jsx-a11y` (accessibility supports D-019).
+- **Deployment:** pick Railway's Postgres 18 image explicitly; its `:latest` tag resolves to 16 (D-058). Configure the Rails trusted proxies (D-029). Set `RAILS_MASTER_KEY`, or plain environment variables, on Railway.
+- **Brakeman and bundler-audit** are installed but not run in CI; cheap to add to the API lint job once there is real code.
 
-### Orchestrator pre-review of PR #1 (2026-09-15)
-Not a QA pass; QA still runs. What the orchestrator checked directly:
-- 6 commits, spec `d490ca9` before implementation `cdd649e`. CI green on all three pushed heads.
-- Solid Cache and Solid Queue tables live in `db/schema.rb` on the primary database; no separate cache or queue database is declared (D-052 satisfied).
-- `database.yml` holds no credentials; dotenv reads the root `.env` and is assigned before the `Application` class.
-- Health endpoint returns only `status` and `time`, and a spec asserts exactly that.
-- Pinned actions verified upstream: `actions/checkout@v7` (latest v7.0.1) and `ruby/setup-ruby@v1` (that action's own convention). The chapter's claim that `setup-ruby` has no `ruby-version-file` input was verified against its `action.yml`: correct.
-- Learning chapters are substantial and specific; the traps sections describe real failures.
+## Process notes for the next orchestrator
+- **One shared checkout (D-068).** Before any `docs N` commit: check that `git branch --show-current` prints `main`, stage explicit paths only, and confirm `origin/main` moved. Assert every text replacement in edit scripts. The stray commit `beb2b45` sits on the merged `feature/2-rails-api-skeleton` branch and can be ignored or deleted.
+- **Untracked `apps/web/build/` and `apps/web/.react-router/`** appear on `main` until PR #2 merges. Never stage them.
+- **Repository visibility (D-059):** readable by everyone, by the owner's choice. Nothing that should stay unpublished goes into git.
+- **The Rails master key** is backed up by the owner (confirmed 2026-09-17).
 
-**Risk found by the orchestrator, and its correct size (owner challenged the framing, 2026-09-15):** the root `.gitignore` does not ignore `*.key`. Inside `apps/api` the generated `.gitignore` covers `/config/*.key`, so the key is ignored on the feature branch and, once PR #1 merges, on `main` as well. The exposure is therefore a **window**, not a permanent hole: only while PR #1 is unmerged, and only if someone runs `git add -A` while `main` is checked out. The owner is the only person pushing, so the practical risk is small.
-
-**Resolution:** the extension prompt `prompts/implementation/feature-002-rails-api-skeleton-ext-gitignore-keys.md` was written but **is not dispatched**. A round trip through the agent, chapter edits and QA re-verification is not worth a one-line defence-in-depth rule. The line is folded into the Feature 3 prompt instead, where an agent is editing the repository anyway. Until PR #1 merges, handoff commits on `main` stage explicit paths, never `git add -A`.
-- New proposals the owner can object to: D-062 (RuboCop omakase), D-063 (Rails components skipped).
-
-### Next
-1. The owner dispatches Feature 2 from a new session.
-2. The orchestrator reviews the report, then writes `prompts/qa/qa-feature-002-rails-api-skeleton.md` (QA applies from here on, D-061).
-3. Fix rounds if needed (D-054), then the owner squash-merges the PR.
-4. Commit the reports as the next `docs N`, then write the Feature 3 prompt (web skeleton).
-
-### Carry-over notes for Feature 3
-- Read the host database port from `POSTGRES_PORT`, so it is configured in one place only.
-- Apply D-065 in Feature 3: remove the path filters from the `pull_request` triggers of both workflows, keep them on `push`, then add `RuboCop` and `RSpec` (and the web equivalents) as required status checks (D-060).
-- Root `.gitignore` in Feature 3: narrow `tmp/` to `/tmp/` so each app governs its own, and add a repository-wide `*.key` rule (see the stood-down extension prompt).
-- `web.yml` declares `permissions: contents: read` on creation (D-066).
-- At deployment, pick Railway's Postgres 18 image explicitly; its `:latest` tag resolves to 16 (D-058).
-
-### Counters (D-035, D-053)
-- Last `Feature`: 1 (`Feature 2` assigned to the Rails API skeleton).
+## Counters (D-035, D-053)
+- Last `Feature`: 3 (in review; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 1 (Feature 1 report + handoff updates + Feature 2 prompt).
+- Last `docs`: 6 (the number is reused because the stray `beb2b45` never reached `main`; see D-068).
 
-### Blockers
-- None technical. Git identity is configured; port 5432 was free.
+## Blockers
+- None.

@@ -266,7 +266,7 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
   - `apps/api/` — the Rails API
   - `apps/web/` — the React Router frontend
   - `docker-compose.yml` at the root
-  - `.github/workflows/api.yml` and `.github/workflows/web.yml`, filtered by path
+  - `.github/workflows/api.yml` and `.github/workflows/web.yml` (triggers amended by D-065: path filters on pushes only)
   - `handoff/`
   - `CLAUDE.md` at the root
 - **Owner change:** The owner required both apps under an "Apps" folder; everything else was accepted as proposed.
@@ -548,3 +548,35 @@ Validated through D-003 to D-043. Where a later entry differs from this, the lat
 - **Rule:** a chapter must be followable from the previous chapter's end state with no missing steps. When the author's environment already had state the reader lacks (databases, containers, credentials, installed tools), the chapter must say how the reader gets it.
 - **Also required:** if the end state was produced by a command, the chapter gives the command. If it was done in a web UI, the chapter says so and names the settings. Describing a result without a path to it (QA finding 2 on chapter 01) is not acceptable.
 - **Applies to:** every future chapter, and to the QA checklist that verifies them.
+
+---
+
+## Feature 3 review outcomes (2026-09-17)
+
+### D-068 · Accepted — One shared checkout: branch discipline for agents and the orchestrator
+- **What went wrong (orchestrator error, 2026-09-16):** the live Feature 2 agent had switched the shared folder to `feature/2-rails-api-skeleton`. The orchestrator then committed `docs 6` without checking the branch, so the commit landed on the feature branch, and `git push origin main` pushed nothing. The orchestrator had filtered the push output and did not notice. The Feature 3 agent found the stray commit (`beb2b45`) and flagged it. Nothing leaked into `main`: PR #1 was squash-merged from the remote branch, which never received that commit.
+- **A second failure hidden inside the first:** the orchestrator's status-file edit script replaced text without checking that the text existed. On the feature branch's older status file most replacements silently did nothing, so `beb2b45`'s status file was not what it claimed to be. Edit scripts must assert every replacement.
+- **Rules (written into `CLAUDE.md` §5):**
+  - Every agent ends its session on `main`.
+  - Before any `docs N` commit, the orchestrator confirms the current branch is `main`, stages explicit paths only, and confirms `origin/main` actually moved.
+  - Only one agent works at a time.
+- **Recovery:** the Feature 3 prompt was restored onto `main` from `beb2b45`; the status file was rewritten from `main`'s version. `docs 6` is reused as the number, because the stray commit never reached `main`. `beb2b45` stays only on the merged, deletable `feature/2-rails-api-skeleton` branch.
+- **Rejected alternative:** a separate git worktree for the orchestrator. It removes the race, but agents read the handoff from the main folder, so prompts and reports would live in two places.
+
+### D-069 · Accepted — Feature 3 deviations accepted as reasonable
+The orchestrator reviewed the Feature 3 report's ten deviations and accepts all of them:
+- **React Router 8.3.1 rather than 8.4.0, and `@types/node` 24.13.4:** pnpm 12's `minimumReleaseAge` supply-chain check rejects packages published less than 24 hours ago. Keeping the check on is worth more than a one-day-newer version. The upgrade is a follow-up.
+- **TypeScript 5.9.3 rather than 7.0.2:** TypeScript 7 is outside the peer ranges of `typescript-eslint` and `ts-jest`.
+- **A `Build` CI job:** it is the only check that enforces the `.server` boundary (D-039, D-045), so it earns its place beside lint, typecheck and tests (amends D-033).
+- **`<html lang="es">` and the title "Tintara Lab":** consistent with D-004 and D-006. Kept.
+- **`apps/api/tmp/.keep` and `apps/api/tmp/pids/.keep` committed:** the prompt contradicted itself (requirement 9 asked for the file, the verification section asked for an empty `apps/api` diff). The agent followed the more specific requirement, which was right; the contradiction was the orchestrator's.
+- **`git check-ignore` reports the nearest `.gitignore`:** a correct explanation of git behaviour, verified by temporarily removing the nearer rule.
+- **Removed template files** (Dockerfile, `app/welcome/`, fonts, README): all out of place for this app or belonging to later features.
+
+### D-070 · Proposed — Required status checks on `main`
+- **Decision:** after PR #2 merges and both workflows run on `main`, require these six checks: `RuboCop`, `RSpec`, `ESLint`, `TypeScript`, `Jest`, `Build`. Each is tied to the GitHub Actions app, so no other app can satisfy it.
+- **`strict: false`** (recommended): a PR does not have to be rebased onto the latest `main` before merging.
+  - **Rationale:** one maintainer merging one PR at a time, with squash merges. `strict: true` would force a rebase and a full CI re-run whenever `main` moved, and `main` moves with every `docs N` commit.
+  - **Accepted risk:** a PR's checks could have passed against an older `main`. With one open PR at a time and `docs` commits touching only `handoff/`, that risk is negligible.
+- **Command:** the full `PUT` payload is in the Feature 3 report, section "Required status checks". It rewrites the whole protection object with every other value copied from the live settings, so nothing else changes.
+- **Status:** Waiting for the owner's confirmation of `strict: false`. The command is run by the owner or the orchestrator after PR #2 merges.

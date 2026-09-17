@@ -87,6 +87,12 @@ Tintara Lab is a portfolio web app for a photographer (Luisa Sanabria, Medellín
 - **QA agents** write their report as an **untracked file and never commit it**. When done, switch back to `main`; the orchestrator commits the report.
 - **Before starting**, confirm `git status` on `main` is clean and `git pull` succeeds. If `main` has uncommitted handoff changes, stop and report it.
 
+### One shared checkout (D-068)
+Every agent and the orchestrator work in the **same folder**, so whichever branch one of them leaves checked out is the branch the next one finds.
+- **Every agent, implementation and QA alike, ends its session on `main`**: `git switch main` after its last push. Untracked build output of an unmerged app may appear there; that is expected, and nobody stages it.
+- **Before any `docs N` commit**, the orchestrator confirms `git branch --show-current` prints `main`, stages **explicit paths only** (never `git add -A` or `git add .`), and confirms the push actually moved `origin/main`.
+- **Only one agent works at a time.** The owner never runs an agent while another agent, or the orchestrator, is changing files.
+
 ### Fixing QA findings (D-054)
 - **Where fixes happen:** findings on an open PR are fixed **in the same PR, before merging**:
   1. A fix-round prompt (`feature-NNN-<slug>-fix-rK.md`) sends the implementation agent back to the same branch.
@@ -103,8 +109,10 @@ Tintara Lab is a portfolio web app for a photographer (Luisa Sanabria, Medellín
 apps/api/                      Rails 8.1 API (Ruby 3.4.3)
 apps/web/                      React Router framework mode, TypeScript, Tailwind, pnpm
 docker-compose.yml             Postgres only (D-030)
-.github/workflows/api.yml      lint + tests, path-filtered (D-033)
-.github/workflows/web.yml      lint + typecheck + tests, path-filtered (D-033)
+.github/workflows/api.yml      RuboCop + RSpec (D-033)
+.github/workflows/web.yml      ESLint/Prettier + TypeScript + Jest + Build (D-033)
+                               both: every PR runs both, pushes to main are path-filtered (D-065),
+                               token is read-only (D-066)
 handoff/
 CLAUDE.md
 ```
