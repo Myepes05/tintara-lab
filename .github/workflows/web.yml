@@ -27,7 +27,7 @@ defaults:
 # jobs run on separate machines, and GitHub reports each one as its own check.
 jobs:
   lint:
-    name: ESLint
+    name: Web ESLint
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -67,7 +67,7 @@ jobs:
         run: pnpm format:check
 
   typecheck:
-    name: TypeScript
+    name: Web TypeScript
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -99,7 +99,7 @@ jobs:
         run: pnpm typecheck
 
   test:
-    name: Jest
+    name: Web Jest
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -134,7 +134,7 @@ jobs:
   # modules out of the browser bundle (D-039, D-045) is enforced by the build,
   # and by nothing else. Without this job, a PR that breaks it would pass CI.
   build:
-    name: Build
+    name: Web Build
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository

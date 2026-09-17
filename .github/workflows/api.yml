@@ -25,7 +25,7 @@ defaults:
 
 jobs:
   lint:
-    name: RuboCop
+    name: API RuboCop
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -43,7 +43,7 @@ jobs:
         run: bundle exec rubocop
 
   test:
-    name: RSpec
+    name: API RSpec
     runs-on: ubuntu-latest
 
     # Throwaway credentials for the service container below. They exist only
