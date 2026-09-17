@@ -1,0 +1,4 @@
+/* Tailwind CSS v4 needs no config file: this single import loads the engine and
+   scans the project for utility classes. The palette, fonts and design tokens
+   of the real site are a later feature; nothing is customised here yet. */
+@import "tailwindcss";
