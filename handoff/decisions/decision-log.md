@@ -604,7 +604,7 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
 - **Rationale:** the script is then self-sufficient everywhere, locally and in CI, with a single source of truth. A separate typegen step in the `Web Jest` job would fix CI only, and leave a fresh local clone broken.
 - **Rejected alternative:** a typegen step in `web.yml`'s Jest job. Doing both would be redundant.
 
-### D-074 · Proposed — How Jest tests real React Router components (spike before Phase 4)
+### D-074 · Accepted — How Jest tests real React Router components (spike before Phase 4)
 - **Problem (Feature 3 fix round 1, question R-Q1):** `react-router` 8.x ships only ES modules. Jest runs tests as CommonJS (D-020), so importing any module that imports `react-router` fails with `Must use import to load ES Module`. Feature 3 worked around it for one test with a `jest.mock("react-router", …)` factory holding a copy of `isRouteErrorResponse`. That does not scale: Phase 4 and Phase 5 test real router behaviour (`Link`, `useLoaderData`, route modules, `createRoutesStub`).
 - **Options:**
   - **(a)** Mock React Router per test. Cheap, but real router behaviour goes untested, and hand-copied functions drift on every upgrade.
@@ -612,7 +612,7 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
   - **(c)** Jest's native ESM mode (`--experimental-vm-modules`) plus jsdom polyfills (`TextEncoder` failed in the first attempt). It is still marked experimental by Node and Jest.
 - **Proposal:** a short spike on **(b)**, with (c) as the fallback, **before Feature 14**. Phases 2 and 3 do not touch `apps/web`, so nothing waits on it. Success criterion: a test renders a component using `Link` through `createRoutesStub` with the real `react-router`, in CI, and the Feature 3 `jest.mock` factory is removed.
 - **If both options fail:** D-020 (Jest is firm) must come back to the owner **before** Phase 4, with the evidence. Neither the spike nor any later agent may switch the test runner on its own.
-- **Status:** Waiting for the owner's confirmation. The spike goes into the plan as a checkpoint before Phase 4.
+- **Status:** Accepted by the owner on 2026-09-17: spike on option (b), with (c) as the fallback, as the checkpoint before Phase 4 in the master plan.
 
 ### D-075 · Accepted — Feature 3 fix round 1 verified by the orchestrator (QA re-check still required)
 - **Checked directly on 2026-09-17:**

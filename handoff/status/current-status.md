@@ -25,7 +25,7 @@
 - **QA (2026-09-17): FAIL.** One `major` (F-1: `ErrorBoundary` reads `import.meta.env.DEV` directly), four `minor`, five `nit`. Build, SSR, the `.server` boundary (proved by deliberately breaking it), tests, CI, versions and `.gitignore` all verified clean. Report: `agent-outputs/qa/qa-feature-003-web-skeleton.md`.
 - **Fix round 1 (done, 2026-09-17):** all ten findings fixed; six checks renamed and green (`API RuboCop`, `API RSpec`, `Web ESLint`, `Web TypeScript`, `Web Jest`, `Web Build`); spec `7eb7df3` before `ff41b9a`; 16 tests. Verified by the orchestrator (D-075).
   - New infrastructure disclosed by the agent: a `jest.mock("react-router")` factory in `root.test.tsx` (React Router 8 ships only ES modules), and `pnpm test` running typegen first (accepted as D-073). The CSS mapper is now in use.
-  - The agent's open question on testing real router components became **D-074 (proposed)**: a spike before Phase 4.
+  - The agent's open question on testing real router components became **D-074 (accepted)**: a spike before Phase 4, on option (b) with (c) as the fallback.
 - **QA re-check prompt:** `prompts/qa/qa-feature-003-web-skeleton-r1.md`. Waiting for the owner to dispatch it.
 
 ## Next
@@ -36,7 +36,6 @@
 5. Phase 2 begins with Feature 4 (API security baseline).
 
 ## Open owner decisions
-- **D-074:** confirm the Jest and React Router spike (option b, with c as fallback) as a checkpoint before Phase 4.
 - **Not urgent:** GitHub Issues are enabled on a repository anyone can read; consider disabling them.
 
 ## Carry-over notes for later features
@@ -57,7 +56,7 @@
 ## Counters (D-035, D-053)
 - Last `Feature`: 3 (in review; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 9.
+- Last `docs`: 10.
 
 ## Blockers
 - None.
