@@ -19,8 +19,13 @@ export interface PublicConfig {
  * A missing value is not an error here: this one is public and has a sensible
  * development default. Server-only values behave the opposite way; see
  * server-config.server.ts.
+ *
+ * It accepts only the variable it interprets, so a test does not have to invent
+ * the rest of the client environment.
  */
-export function readPublicConfig(env: ClientEnv): PublicConfig {
+export function readPublicConfig(
+  env: Pick<ClientEnv, "VITE_PUBLIC_API_BASE_URL">,
+): PublicConfig {
   const configured = env.VITE_PUBLIC_API_BASE_URL?.trim();
 
   return {
