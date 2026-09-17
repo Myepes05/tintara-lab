@@ -65,6 +65,11 @@ The orchestrator writes `handoff/plan/api-contract.md` (D-051): every endpoint, 
 
 ---
 
+## Orchestrator checkpoint — Jest and React Router spike (before Phase 4, D-074)
+A short task proving that Jest can render real React Router components (`Link`, `createRoutesStub`) by transforming `react-router` from `node_modules` (option b), with Jest ESM mode as the fallback. It removes the Feature 3 `jest.mock` workaround. If neither option works, D-020 goes back to the owner before any Phase 4 prompt is written. This task takes the next Feature number when it runs.
+
+---
+
 ## Phase 4 — Public site (web)
 **Goal:** the server-rendered public page, faithful to the mockups within the brief's scope.
 
