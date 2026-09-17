@@ -1,6 +1,6 @@
 # Chapter 03 — The React Router web skeleton: server rendering, Jest, ESLint and CI
 
-**Task:** Feature 3 · **Decisions:** D-005, D-018, D-019, D-020, D-021, D-032, D-033, D-039, D-045, D-050, D-055, D-065, D-066, D-067 · **Code:** PR [#2](https://github.com/Myepes05/tintara-lab/pull/2)
+**Task:** Feature 3 · **Decisions:** D-005, D-018, D-019, D-020, D-021, D-032, D-033, D-039, D-045, D-050, D-055, D-065, D-066, D-067, D-071 · **Code:** PR [#2](https://github.com/Myepes05/tintara-lab/pull/2)
 
 ## 1. What we are building in this chapter
 
@@ -138,7 +138,7 @@ The template declares loose ranges (`"react-router": "^8"`). D-055 asks for pinn
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest"
+    "test": "react-router typegen && jest"
   },
   "dependencies": {
     "@react-router/node": "8.3.1",
@@ -194,7 +194,7 @@ and install:
 pnpm install
 ```
 
-- **What the scripts do:** `dev` starts the development server, `build` writes `build/client` (browser files) and `build/server` (the server entry), and `start` serves that build with React Router's own small Node server. `typecheck` first runs `react-router typegen`, which generates the per-route types that files like `root.tsx` import from `./+types/root`, and then `tsc`. `lint`, `format`, `format:check` and `test` are covered in steps 6 and 10.
+- **What the scripts do:** `dev` starts the development server, `build` writes `build/client` (browser files) and `build/server` (the server entry), and `start` serves that build with React Router's own small Node server. `typecheck` first runs `react-router typegen`, which generates the per-route types that files like `root.tsx` import from `./+types/root`, and then `tsc`. `test` runs `react-router typegen` before Jest for the same reason: step 6 adds a test that imports `root.tsx`, ts-jest type-checks it, and the generated `./+types/root` must exist. A fresh checkout, like CI's, does not have it (trap 16). `lint`, `format`, `format:check` and `test` are covered in steps 6 and 10.
 - **How each version was chosen.** Each one was looked up with `npm view <package> version`, and the peer requirements were checked with `npm view <package> peerDependencies`. Three versions are deliberately *not* the newest release:
   - **`react-router` and the `@react-router/*` packages at 8.3.1, not 8.4.0.** 8.4.0 had been published the day before. pnpm 12 has a supply-chain rule, `minimumReleaseAge`, which by default refuses any version published within the last 24 hours. A brand-new release is when a hijacked package does its damage. The same rule held `@types/node` at 24.13.4 instead of 24.13.5. See trap 2 for what happens when you pin the newer version anyway.
   - **`typescript` at 5.9.3, not 7.0.2.** `typescript-eslint` 8.70 declares `typescript: ">=4.8.4 <6.1.0"` and `ts-jest` 29.4 declares `typescript: ">=4.3 <7"`. TypeScript 7 would install without complaint and then break the lint and test tooling. 5.9.3 is also what the template itself ships.
@@ -291,10 +291,12 @@ Jest uses none of that. It has its own module loader, runs test files as CommonJ
 
 | Missing piece | Error you get |
 |---|---|
-| No transform at all (Jest defaults) | `Must use import to load ES Module: …/public-config.test.ts` — "The file contains ESM syntax (import/export) that could not be executed as CommonJS" |
+| No transform at all (Jest defaults) | `Must use import to load ES Module: …/test/setup-jest.ts` — "The file contains ESM syntax (import/export) that could not be executed as CommonJS" |
 | ts-jest, but with the app's own `tsconfig.json` | `TS1295: ECMAScript imports and exports cannot be written in a CommonJS file under 'verbatimModuleSyntax'` |
 | The Jest tsconfig, but no stub for `client-env` | `TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', …` |
 | No `~/*` mapping | `Cannot find module '~/config/public-config' from 'app/config/public-config.test.ts'` |
+
+Row 1 names the setup file, not the test, because Jest loads the `setupFilesAfterEnv` file (below) before any test file. Without a transform, that is the first TypeScript file Jest tries to run, so it is the first one that fails.
 
 Two more failures show up on the component spec:
 
@@ -303,11 +305,13 @@ Two more failures show up on the component spec:
 | `testEnvironment` left at its default, `node` | `ReferenceError: document is not defined`, and Jest itself suggests "Consider using the "jsdom" test environment" |
 | No jest-dom setup file | `TypeError: expect(...).toHaveTextContent is not a function` |
 
-Now the files. First, let TypeScript know about Jest's global functions (`describe`, `it`, `expect`), because `tsc` checks the test files too. In `tsconfig.json`, change one line:
+Now the files. First, declare Jest's global functions (`describe`, `it`, `expect`) for TypeScript, because `tsc` checks the test files too. In `tsconfig.json`, change one line:
 
 ```json
     "types": ["node", "vite/client", "jest"],
 ```
+
+Today `tsc` would accept those globals even without this entry: `@testing-library/jest-dom`'s own type declarations reference `@types/jest`, which `tsc --explainFiles` shows. Listing `"jest"` makes the dependency explicit instead of relying on that side effect, which would break silently if jest-dom ever changed.
 
 `jest.config.js`, the whole file:
 
@@ -343,7 +347,10 @@ export default {
   moduleNameMapper: {
     "^~/config/client-env$": "<rootDir>/test/stubs/client-env.ts",
     "^~/(.*)$": "<rootDir>/app/$1",
+    // Needed since app/root.test.tsx: root.tsx imports app.css.
     "\\.css$": "<rootDir>/test/stubs/style.ts",
+    // Not used by any test yet. It is ready for the first component that
+    // imports an image (Phase 4).
     "\\.(svg|png|jpe?g|gif|webp|avif|ico)$": "<rootDir>/test/stubs/asset.ts",
   },
 
@@ -360,6 +367,7 @@ Line by line:
 - **`roots`** limits the search for test files to `app/`, so Jest never scans `build/` or `node_modules/`.
 - **`setupFilesAfterEnv`** runs `test/setup-jest.ts` before each test file (see below).
 - **`moduleNameMapper`** is Jest's version of Vite's resolver: a regular expression on the import path, mapped to a real file. The comment about order is not decoration: `~/config/client-env` also matches `^~/(.*)$`, so the more specific rule has to come first.
+- **The CSS and image mappings** each carry a comment saying who needs them. The CSS one has been needed since the `ErrorBoundary` spec below, because `root.tsx` imports `app.css`; without it, Jest stops with `SyntaxError: Invalid or unexpected token` at `app/app.css`. No test imports an image yet. That mapping is kept for the first component that does (Phase 4), and its comment says exactly that.
 - **`transform`** sends every `.ts` and `.tsx` file through ts-jest, which compiles it with the TypeScript compiler, type errors included. That is why the missing-module errors in the table above appear as `TS…` codes.
 
 `tsconfig.jest.json`, the settings ts-jest uses:
@@ -369,18 +377,19 @@ Line by line:
   "extends": "./tsconfig.json",
   "compilerOptions": {
     // ts-jest hands Jest CommonJS, because Jest runs test files as CommonJS
-    // unless it is put into its experimental ESM mode. The app itself is
-    // compiled as ES modules, so this file overrides exactly two settings:
-    //  - module: CommonJS, so imports and exports become require() calls;
-    //  - verbatimModuleSyntax: false, because that option forbids writing
-    //    `import`/`export` in a file that is emitted as CommonJS.
-    "module": "CommonJS",
+    // unless it is put into its experimental ESM mode. ts-jest sets `module`
+    // to CommonJS by itself outside that mode, so this file does not repeat
+    // it. The one setting that has to change is verbatimModuleSyntax: the app
+    // turns it on, and it forbids writing `import`/`export` in a file that is
+    // emitted as CommonJS.
     "verbatimModuleSyntax": false
   }
 }
 ```
 
-It inherits everything else, including `strict`, `jsx` and the `~/*` paths, from the app's `tsconfig.json`. The first draft also overrode `moduleResolution` and `isolatedModules`. Both overrides were removed after testing showed they changed nothing.
+It inherits everything else, including `strict`, `jsx` and the `~/*` paths, from the app's `tsconfig.json`, and overrides one setting: `verbatimModuleSyntax: false`. Remove that line and ts-jest fails with `TS1295`, the second row of the first table.
+
+You might expect `"module": "CommonJS"` here as well, and the first version of this file had it. It did nothing. Outside Jest's ESM mode, ts-jest replaces `module` with CommonJS on its own (ts-jest 29.4.12, `fixupCompilerOptionsForModuleKind` in `dist/legacy/compiler/ts-compiler.js`). You can see that it still emits CommonJS without the line: remove the `client-env` mapping and `TS1343` appears, which happens only for a CommonJS emit. The first draft also overrode `moduleResolution` and `isolatedModules`. All three overrides were removed after testing showed they changed nothing.
 
 The setup file and the three stubs:
 
@@ -394,7 +403,8 @@ import "@testing-library/jest-dom";
 ```ts
 // test/stubs/style.ts
 // Vite can import a stylesheet as a module; Node cannot. Jest maps every .css
-// import to this file so that importing a component does not crash.
+// import to this file so that importing a component does not crash. The first
+// test that needs it is app/root.test.tsx, because root.tsx imports app.css.
 export default {};
 ```
 
@@ -402,6 +412,8 @@ export default {};
 // test/stubs/asset.ts
 // Vite turns an image import into a URL string. Jest maps every image import to
 // this file so components that render one still render something predictable.
+// No test imports an image yet; this is ready for the first component that
+// does (Phase 4).
 export default "test-file-stub";
 ```
 
@@ -413,11 +425,15 @@ import type { ClientEnv } from "~/config/env-types";
  * Stands in for app/config/client-env.ts inside Jest.
  *
  * The real module's only job is to hand over `import.meta.env`, which
- * TypeScript refuses to compile to CommonJS (TS1343). Tests never assert
- * against this object: they call readPublicConfig() with an explicit
+ * TypeScript refuses to compile to CommonJS (TS1343). Configuration tests never
+ * assert against this object: they call readPublicConfig() with an explicit
  * environment instead, which is exactly the testability D-020 asks for.
+ *
+ * DEV defaults to false, like a production build. A component test that needs
+ * development behaviour switches it for one test with
+ * `jest.replaceProperty(clientEnv, "DEV", true)`.
  */
-export const clientEnv: ClientEnv = {};
+export const clientEnv: ClientEnv = { DEV: false };
 ```
 
 **Why a stub, and not a Babel plugin or Jest's ESM mode?** There are two other well-known routes. One is a Babel plugin that rewrites `import.meta.env`, which means adding Babel and a plugin. The other is running Jest in its experimental ESM mode (`node --experimental-vm-modules`), which is still labelled experimental. Both push the problem into tooling. The stub keeps it inside the app's own design instead: **one** module reads `import.meta.env`, and everything that interprets the values takes them as a parameter. D-020 asked for exactly that shape ("a config module that tests can mock"), and it costs one mapping line.
@@ -432,11 +448,14 @@ The types module the specs are written against, `app/config/env-types.ts`:
  */
 
 /**
- * The variables Vite inlines into the browser bundle. Vite only exposes names
- * that start with VITE_, which is the reason every value here is public by
- * definition: it ends up in a file anyone can download.
+ * The values Vite inlines into the browser bundle. Vite only exposes project
+ * variables whose names start with VITE_, plus a few built-in ones such as DEV,
+ * which is the reason every value here is public by definition: it ends up in a
+ * file anyone can download.
  */
 export interface ClientEnv {
+  /** Vite's built-in flag: true under `pnpm dev`, false in a production build. */
+  DEV: boolean;
   VITE_PUBLIC_API_BASE_URL?: string;
 }
 
@@ -447,7 +466,7 @@ export interface ClientEnv {
 export type ServerEnv = Record<string, string | undefined>;
 ```
 
-And the three specs. `app/components/site-shell.test.tsx`:
+And the four specs. `app/components/site-shell.test.tsx`:
 
 ```tsx
 import { render, screen, within } from "@testing-library/react";
@@ -557,10 +576,129 @@ describe("readServerConfig", () => {
       /API_INTERNAL_URL.*API_INTERNAL_TOKEN/s,
     );
   });
+
+  it("trims surrounding whitespace from the values it returns", () => {
+    const config = readServerConfig({
+      API_INTERNAL_URL: " http://x ",
+      API_INTERNAL_TOKEN: "\ta-development-token\n",
+    });
+
+    expect(config).toEqual({
+      apiInternalUrl: "http://x",
+      apiInternalToken: "a-development-token",
+    });
+  });
+});
+
+describe("getServerConfig", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // A fresh copy of the module, so its cache starts empty in every test.
+    jest.resetModules();
+    process.env = {
+      ...originalEnv,
+      API_INTERNAL_URL: "http://first",
+      API_INTERNAL_TOKEN: "first-token",
+    };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("reads the process environment once and reuses the result", async () => {
+    const { getServerConfig } = await import("~/config/server-config.server");
+
+    const first = getServerConfig();
+    process.env.API_INTERNAL_URL = "http://second";
+
+    expect(getServerConfig()).toBe(first);
+    expect(getServerConfig().apiInternalUrl).toBe("http://first");
+  });
 });
 ```
 
 `it.each` runs the same test once per value, and `%s` in the title is replaced by that value. `toThrow("API_INTERNAL_URL")` passes when the error message *contains* that text. That is the check for "fails with a clear message naming the variable".
+
+The last two tests pin down behaviour that is easy to break without noticing. The trimming test feeds values with surrounding whitespace, because the first test's clean values would still pass if the `.trim()` on the returned values were dropped. The `getServerConfig` test checks the cache: it reads the environment, changes `process.env`, and expects the same object back. `jest.resetModules()` makes the `await import(...)` load a fresh copy of the module in each test, so the cache always starts empty. This is the one test that has to replace `process.env`, and it restores the original in `afterEach`.
+
+The fourth spec, `app/root.test.tsx`, covers the template's `ErrorBoundary`. It must show the error's message and stack trace in development and hide them otherwise:
+
+```tsx
+import { render, screen } from "@testing-library/react";
+
+import { clientEnv } from "~/config/client-env";
+import { ErrorBoundary } from "~/root";
+import type { Route } from "./+types/root";
+
+// react-router 8 ships only ES modules, and Jest runs tests as CommonJS, so the
+// real package cannot be loaded here: Jest stops with "Must use import to load
+// ES Module". This factory replaces it without ever loading it. ErrorBoundary
+// uses only isRouteErrorResponse, copied from react-router 8.3.1
+// (dist/production/lib/router/utils.js); the document components the other
+// exports of root.tsx render are not needed by these tests.
+jest.mock("react-router", () => ({
+  isRouteErrorResponse: (error: unknown) => {
+    const candidate = error as Record<string, unknown> | null | undefined;
+    return (
+      candidate != null &&
+      typeof candidate.status === "number" &&
+      typeof candidate.statusText === "string" &&
+      typeof candidate.internal === "boolean" &&
+      "data" in candidate
+    );
+  },
+}));
+
+// The boundary only reads `error`; the other props React Router passes are
+// irrelevant to what it renders.
+function renderBoundary(error: unknown) {
+  const props = { error } as Route.ErrorBoundaryProps;
+  render(<ErrorBoundary {...props} />);
+}
+
+function thrownError() {
+  const error = new Error("Something broke");
+  error.stack = "Error: Something broke\n    at the component that threw";
+  return error;
+}
+
+describe("ErrorBoundary", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("shows the error message and stack trace in development", () => {
+    jest.replaceProperty(clientEnv, "DEV", true);
+
+    renderBoundary(thrownError());
+
+    expect(screen.getByText("Something broke")).toBeInTheDocument();
+    expect(screen.getByText(/at the component that threw/)).toBeInTheDocument();
+  });
+
+  it("hides the error message and stack trace outside development", () => {
+    jest.replaceProperty(clientEnv, "DEV", false);
+
+    renderBoundary(thrownError());
+
+    expect(
+      screen.getByText("An unexpected error occurred."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Something broke")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/at the component that threw/),
+    ).not.toBeInTheDocument();
+  });
+});
+```
+
+Three things in it need explaining:
+
+- **`jest.mock("react-router", factory)`.** `root.tsx` imports from `react-router`, and react-router 8 ships only ES modules, so Jest cannot load it (trap 15). `jest.mock` with a factory gives every import of `react-router` in this test file the factory's object instead, and the real package is never loaded. ts-jest moves the call above the imports, so it takes effect before `root.tsx` is loaded. The factory holds only what `ErrorBoundary` calls, `isRouteErrorResponse`, copied from react-router's source so it behaves the same way.
+- **`jest.replaceProperty(clientEnv, "DEV", true)`.** `clientEnv` here is the Jest stub, the same object `root.tsx` receives, because both import `~/config/client-env`. `replaceProperty` swaps one property for one test, and `jest.restoreAllMocks()` in `afterEach` puts the stub's `false` back.
+- **`{ error } as Route.ErrorBoundaryProps`.** React Router passes the boundary more props than `error`, but the boundary reads only `error`. The cast states that on purpose. The `Route` type comes from `react-router typegen`, which is why `pnpm test` runs typegen first (trap 16).
 
 Run the suite. It must fail, and it must fail for the right reason:
 
@@ -569,15 +707,21 @@ pnpm test
 ```
 
 ```
+$ react-router typegen && jest
 FAIL app/config/server-config.test.ts
     app/config/server-config.test.ts:2:34 - error TS2307: Cannot find module '~/config/server-config.server' or its corresponding type declarations.
+    app/config/server-config.test.ts:75:46 - error TS2307: Cannot find module '~/config/server-config.server' or its corresponding type declarations.
+FAIL app/config/public-config.test.ts
+    app/config/public-config.test.ts:4:8 - error TS2307: Cannot find module '~/config/public-config' or its corresponding type declarations.
+FAIL app/root.test.tsx
+    app/root.test.tsx:3:27 - error TS2307: Cannot find module '~/config/client-env' or its corresponding type declarations.
 FAIL app/components/site-shell.test.tsx
     app/components/site-shell.test.tsx:3:27 - error TS2307: Cannot find module '~/components/site-shell' or its corresponding type declarations.
 …
-Test Suites: 3 failed, 3 total
+Test Suites: 4 failed, 4 total
 ```
 
-Every suite fails because the module under test does not exist. None fails because of Jest configuration. That tells you the machinery works. Commit from the repository root:
+Every suite fails because a module it imports does not exist yet. For `root.test.tsx` that module is `~/config/client-env`. ts-jest type-checks that import through `tsconfig.json`'s `~/*` path, not through Jest's mapping, so the stub alone does not satisfy it. None fails because of Jest configuration. That tells you the machinery works. (In the pull request, `client-env.ts` already existed when the `ErrorBoundary` spec was added, so there it failed with `TS1343` at `root.tsx:46`, the direct `import.meta.env.DEV` read. That is the right kind of failure too.) Commit from the repository root:
 
 ```sh
 git add apps/web
@@ -640,7 +784,21 @@ export default function Home() {
 rm -r app/welcome
 ```
 
-In `app/root.tsx`, delete the whole `export const links …` block, which loaded the Inter font from Google Fonts, and change `<html lang="en">` to `<html lang="es">`. Replace `app/app.css` with:
+In `app/root.tsx`, delete the whole `export const links …` block, which loaded the Inter font from Google Fonts, and change `<html lang="en">` to `<html lang="es">`. Then make `ErrorBoundary` read the development flag through the config module instead of `import.meta.env`. Import it above the route types:
+
+```tsx
+import { clientEnv } from "~/config/client-env";
+import type { Route } from "./+types/root";
+import "./app.css";
+```
+
+and change the condition in `ErrorBoundary` from `import.meta.env.DEV && …` to:
+
+```tsx
+  } else if (clientEnv.DEV && error && error instanceof Error) {
+```
+
+Section 5 explains why. Replace `app/app.css` with:
 
 ```css
 /* Tailwind CSS v4 needs no config file: this single import loads the engine and
@@ -653,28 +811,34 @@ Fonts and design tokens belong to the design feature, so the template's font cho
 
 **The configuration modules.** There are three, one per job.
 
-`app/config/client-env.ts` is the only place in the app that reads `import.meta.env`:
+`app/config/client-env.ts` is the only module in the app that reads `import.meta.env`, including Vite's built-in `DEV` flag that `ErrorBoundary` uses:
 
 ```ts
 import type { ClientEnv } from "./env-types";
 
 /**
- * The only module in this app that touches `import.meta.env`.
+ * The only module in this app that reads `import.meta.env`. (The type
+ * declaration in app/vite-env.d.ts names it too, but reads nothing.)
  *
- * Vite replaces `import.meta.env.VITE_*` with literal strings at build time, so
+ * Vite replaces `import.meta.env.*` with literal values at build time, so
  * everything reachable from here is public. Isolating that read in one file has
  * two consequences that matter:
  *
- *  - No component ever reads an environment variable directly (D-020), so the
- *    logic that interprets these values can be unit-tested with plain objects.
+ *  - No component ever reads an environment value directly (D-020); components
+ *    such as root.tsx's ErrorBoundary import `clientEnv` instead, so tests can
+ *    replace a value, and the logic that interprets these values can be
+ *    unit-tested with plain objects.
  *  - Jest runs tests as CommonJS, and TypeScript will not compile
  *    `import.meta` to CommonJS, so Jest only has to replace this one module
  *    (see jest.config.js).
  */
 export const clientEnv: ClientEnv = {
-  // Each variable is read by its full name: Vite replaces the expression
-  // `import.meta.env.VITE_PUBLIC_API_BASE_URL` with a string literal, and
-  // naming it here keeps exactly this value, and nothing else, in the bundle.
+  // Each value is read by its full name: Vite replaces an expression such as
+  // `import.meta.env.VITE_PUBLIC_API_BASE_URL` with a literal, and naming it
+  // here keeps exactly that value, and nothing else, in the bundle. Reading
+  // `import.meta.env` as a whole object would instead inline every VITE_
+  // variable, including a wrongly prefixed secret that no code references.
+  DEV: import.meta.env.DEV,
   VITE_PUBLIC_API_BASE_URL: import.meta.env.VITE_PUBLIC_API_BASE_URL,
 };
 ```
@@ -703,8 +867,13 @@ export interface PublicConfig {
  * A missing value is not an error here: this one is public and has a sensible
  * development default. Server-only values behave the opposite way; see
  * server-config.server.ts.
+ *
+ * It accepts only the variable it interprets, so a test does not have to invent
+ * the rest of the client environment.
  */
-export function readPublicConfig(env: ClientEnv): PublicConfig {
+export function readPublicConfig(
+  env: Pick<ClientEnv, "VITE_PUBLIC_API_BASE_URL">,
+): PublicConfig {
   const configured = env.VITE_PUBLIC_API_BASE_URL?.trim();
 
   return {
@@ -718,6 +887,8 @@ export function readPublicConfig(env: ClientEnv): PublicConfig {
 /** The configuration of the running app. Safe to import from any module. */
 export const publicConfig = readPublicConfig(clientEnv);
 ```
+
+`readPublicConfig` accepts `Pick<ClientEnv, "VITE_PUBLIC_API_BASE_URL">`, only the variable it reads. With the whole `ClientEnv`, every test would have to invent a `DEV` value that has nothing to do with the URL.
 
 `app/config/server-config.server.ts` holds the server-only values. Section 5 walks through it; create it with the content shown there.
 
@@ -745,6 +916,8 @@ interface ImportMeta {
 }
 ```
 
+`DEV` is not declared in this file: `vite/client` already types it as a `boolean`.
+
 **The environment example**, `apps/web/.env.example`. It is committed and documents every variable:
 
 ```sh
@@ -757,7 +930,8 @@ interface ImportMeta {
 #
 #   VITE_*   Read by Vite from this file and inlined into the browser bundle at
 #            build time. Anyone who opens the site can read them. Never give a
-#            secret a VITE_ prefix.
+#            secret a VITE_ prefix: API_INTERNAL_URL and API_INTERNAL_TOKEN
+#            below must keep exactly those names.
 #
 #   everything else
 #            Read from the process environment by a `.server` module, which the
@@ -807,9 +981,14 @@ The file also explains a point that trips people up: **Vite reads `.env` only fo
 Now everything passes:
 
 ```sh
-pnpm test          # Test Suites: 3 passed, 3 total · Tests: 12 passed, 12 total
+pnpm test          # Test Suites: 4 passed, 4 total · Tests: 16 passed, 16 total
 pnpm typecheck     # no output after "react-router typegen && tsc"
+grep -rln 'import\.meta\.env' app
+                   # app/config/client-env.ts
+                   # app/vite-env.d.ts
 ```
+
+The `grep` checks the `CLAUDE.md` §6 rule: only the config module reads `import.meta.env`. The declaration file names it but reads nothing.
 
 Commit from the repository root: `git add apps/web && git commit -m "Feature 3: implement the site shell, the environment configuration and the home route"`.
 
@@ -974,7 +1153,7 @@ Commit: `git add apps/web && git commit -m "Feature 3: add ESLint and Prettier"`
 
 ### Step 11 — The CI workflow, and the trigger rule (repository root)
 
-Create `.github/workflows/web.yml`. Its header and first job:
+Create `.github/workflows/web.yml`, the whole file:
 
 ```yaml
 name: Web
@@ -1006,7 +1185,7 @@ defaults:
 # jobs run on separate machines, and GitHub reports each one as its own check.
 jobs:
   lint:
-    name: ESLint
+    name: Web ESLint
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -1044,17 +1223,119 @@ jobs:
 
       - name: Check formatting
         run: pnpm format:check
+
+  typecheck:
+    name: Web TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.node-version
+
+      - name: Enable pnpm through corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm typecheck
+
+  test:
+    name: Web Jest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.node-version
+
+      - name: Enable pnpm through corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the tests
+        run: pnpm test
+
+  # Not in D-033's list, and added on purpose: the rule that keeps server-only
+  # modules out of the browser bundle (D-039, D-045) is enforced by the build,
+  # and by nothing else. Without this job, a PR that breaks it would pass CI.
+  build:
+    name: Web Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.node-version
+
+      - name: Enable pnpm through corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for production
+        run: pnpm build
 ```
 
-The other three jobs repeat the same setup steps and differ only in `name:` and their last step:
+The four jobs repeat the same setup steps and differ only in their id, their `name:` and their last steps:
 
-| Job id | Check name | Last step |
+| Job id | Check name | Last steps |
 |---|---|---|
-| `typecheck` | `TypeScript` | `pnpm typecheck` |
-| `test` | `Jest` | `pnpm test` |
-| `build` | `Build` | `pnpm build` |
+| `lint` | `Web ESLint` | `pnpm lint`, then `pnpm format:check` |
+| `typecheck` | `Web TypeScript` | `pnpm typecheck` |
+| `test` | `Web Jest` | `pnpm test` |
+| `build` | `Web Build` | `pnpm build` |
 
-The `build` job carries this comment: it is not in D-033's list, and it was added on purpose, because the build is **the only thing** that enforces the `.server` boundary from step 9. Without the job, a PR that leaks the token into client code would pass CI.
+**Why every check name starts with `Web` (D-071).** GitHub reports each job's `name:` as a check, and a required check (step 14 and section 9) is matched by that name within the GitHub Actions app. A generic name like `Build` would be satisfied by *any* job of *any* workflow in this repository called `Build`, for example a future deploy workflow's, even if the web build never ran. The app prefix makes every name unique. The first version of this workflow used bare names; they were renamed before becoming required, because renaming a required check later means changing the branch protection at the same moment.
+
+The `build` job's comment says why it exists: it is not in D-033's list, and it was added on purpose, because the build is **the only thing** that enforces the `.server` boundary from step 9. Without the job, a PR that leaks the token into client code would pass CI.
 
 What the setup steps do:
 
@@ -1071,7 +1352,17 @@ What the setup steps do:
 3. A workflow that never starts reports **no status at all**. That is not a pass, and not a skip either.
 4. GitHub waits for the required `RuboCop` and `RSpec` statuses, which never arrive. The PR shows "Expected — Waiting for status to be reported" forever and cannot be merged.
 
-The fix: `pull_request` has **no** path filter, so both workflows run on every PR and every required check always reports. `push` to `main` keeps the filter, because after a merge nothing is gating and re-running an unaffected suite is wasted time. Apply the same change to `api.yml`: delete the three `paths:` lines under `pull_request:` and add the same explanatory comment above `on:`. Its `push:` block stays as it was.
+The fix: `pull_request` has **no** path filter, so both workflows run on every PR and every required check always reports. `push` to `main` keeps the filter, because after a merge nothing is gating and re-running an unaffected suite is wasted time. Apply the same change to `api.yml`: delete the three `paths:` lines under `pull_request:`, and add this comment above `on:`. Only its last sentence differs from `web.yml`'s:
+
+```yaml
+# D-065: pull requests run this workflow unconditionally, so every required
+# check always reports a status. A path-filtered workflow that does not run
+# reports nothing at all, and a required check with no status blocks the PR
+# forever. Pushes to main keep the path filter: a merged web or docs change
+# does not need the API suite re-run.
+```
+
+Its `push:` block stays as it was. In the same file, rename the two jobs, as D-071 requires: `name: RuboCop` becomes `name: API RuboCop`, and `name: RSpec` becomes `name: API RSpec`. The job ids, `lint` and `test`, stay as they are.
 
 Commit: `git add .github/workflows && git commit -m "Feature 3: add the web workflow and apply D-065 to api.yml"`.
 
@@ -1126,7 +1417,9 @@ Replace the `- **Web:** _defined by Feature 3_` line in section 7 with the real 
 
 ```markdown
 - **Web** (from `apps/web`, after `corepack enable` once per machine; Node from `apps/web/.node-version`): install `pnpm install` · dev server `pnpm dev` (http://localhost:5173) · specs `pnpm test` · lint `pnpm lint` and `pnpm format:check` · typecheck `pnpm typecheck` · build `pnpm build` · serve the build `pnpm start` (port 3000, or a random free port if 3000 is taken; it prints the URL; `PORT=<port> pnpm start` fixes it). Variables are documented in `apps/web/.env.example`; nothing requires them yet.
-``` Commit it as `Feature 3: fill in the Web line of CLAUDE.md section 7`.
+```
+
+Commit it as `Feature 3: fill in the Web line of CLAUDE.md section 7`.
 
 ### Step 14 — Push and open the pull request (repository root)
 
@@ -1142,7 +1435,7 @@ gh pr create --base main --head feature/3-web-skeleton \
 gh pr checks 2
 ```
 
-There are six checks: `RuboCop` and `RSpec` from `api.yml`, which **run on this PR even though it barely touches `apps/api`** (that is D-065 working), plus `ESLint`, `TypeScript`, `Jest` and `Build` from `web.yml`. All six pass. Do not merge; the owner does that.
+There are six checks: `API RuboCop` and `API RSpec` from `api.yml`, which **run on this PR even though it barely touches `apps/api`** (that is D-065 working), plus `Web ESLint`, `Web TypeScript`, `Web Jest` and `Web Build` from `web.yml`. All six pass. Do not merge; the owner does that.
 
 ## 5. The important files, explained
 
@@ -1229,22 +1522,22 @@ export function getServerConfig(): ServerConfig {
 
 ### `app/root.tsx` (the parts that matter)
 
-`Layout` renders the whole HTML document, `<html lang="es">`, `<head>` and `<body>`, on the server for every request. `<Meta />` and `<Links />` output each route's `meta()` and `links()` results, which is how `<title>Tintara Lab</title>` from `home.tsx` reached the HTML in step 8. `<Scripts />` adds the client bundle that hydrates the page. `ErrorBoundary` is the template's error page and is kept unchanged. It reads `import.meta.env.DEV`, a Vite built-in rather than one of our variables, so no test imports `root.tsx`. A future test that does would need the same `client-env` treatment.
+`Layout` renders the whole HTML document, `<html lang="es">`, `<head>` and `<body>`, on the server for every request. `<Meta />` and `<Links />` output each route's `meta()` and `links()` results, which is how `<title>Tintara Lab</title>` from `home.tsx` reached the HTML in step 8. `<Scripts />` adds the client bundle that hydrates the page. `ErrorBoundary` is the template's error page. Its text is still the template's English; a later feature translates it. One line changed. The template read `import.meta.env.DEV` directly, which broke the project rule that components read environment values only through the config module (`CLAUDE.md` §6). It also made `root.tsx` impossible to import in a test, because of `TS1343`. Now `DEV` travels like any other value: `ClientEnv` declares it, `client-env.ts` reads it by its full name, the Jest stub sets it to `false`, and `root.test.tsx` switches it with `jest.replaceProperty`.
 
 ### `tsconfig.json` (what changed and what was already right)
 
-The template already had `"strict": true`, the `~/*` path, and `.server`/`.client` directories in `include`. The only change is `"jest"` in `types`, so `tsc` understands the test files' global `describe`, `it` and `expect`. The cost is that those names also type-check in application code, where they do not exist at runtime. The alternative was a second tsconfig just for tests plus a second `tsc` run, which is more moving parts for a small project.
+The template already had `"strict": true`, the `~/*` path, and `.server`/`.client` directories in `include`. The only change is `"jest"` in `types`. It makes the test files' dependency on Jest's global `describe`, `it` and `expect` explicit. `tsc` does not need it today, because jest-dom's types already pull in `@types/jest` (step 6), but that is a side effect nobody chose. The cost is that those names also type-check in application code, where they do not exist at runtime. The alternative was a second tsconfig just for tests plus a second `tsc` run, which is more moving parts for a small project.
 
 ### `.github/workflows/api.yml` (what changed)
 
-Only the trigger block: the comment above `on:` was added, and the three `paths:` lines under `pull_request:` were removed. `permissions: contents: read` was already there from Feature 2's fix round (D-066).
+The trigger block: the comment above `on:` was added, and the three `paths:` lines under `pull_request:` were removed. And the two job names: `RuboCop` became `API RuboCop` and `RSpec` became `API RSpec` (D-071). `permissions: contents: read` was already there from Feature 2's fix round (D-066).
 
 ## 6. Decisions behind this chapter
 
 | Decision | What we chose | What we rejected | Why |
 |---|---|---|---|
 | D-018 | React Router framework mode, `ssr: true`, for the public page | Plain SPA; Next.js | Crawlers and link previews get real HTML; Next.js server components fight Jest |
-| D-020 | Jest + RTL + jsdom, with one stubbed `client-env` module | Vitest; Babel plugin for `import.meta`; Jest's experimental ESM mode | Owner's firm choice; the stub keeps the fix inside the app's design instead of more tooling |
+| D-020 | Jest + RTL + jsdom, with one stubbed `client-env` module and a `jest.mock` stand-in for the ESM-only react-router | Vitest; Babel plugin for `import.meta`; Jest's experimental ESM mode | Owner's firm choice; the stub keeps the fix inside the app's design instead of more tooling |
 | D-021 | pnpm 12.4.2 through corepack, pinned with its hash | Global pnpm install | One version per project, verified by hash |
 | D-055 | Exact versions; react-router 8.3.1, TypeScript 5.9.3 | Newest-of-everything (8.4.0, TS 7.0.2) | 8.4.0 was under pnpm's 24-hour release-age rule; TS 7 is outside typescript-eslint's and ts-jest's supported ranges |
 | D-005 | Tailwind 4 via `@tailwindcss/vite`, no customisation | Material UI; adding tokens now | Design is a later feature |
@@ -1252,6 +1545,7 @@ Only the trigger block: the comment above `on:` was added, and the three `paths:
 | D-033 + this chapter | ESLint (+ Prettier check), TypeScript, Jest **and Build** jobs | Lint/typecheck/test only | Only the build checks the `.server` boundary |
 | D-065 | No path filter on `pull_request`; filter kept on `push` | "Skip" companion jobs; not requiring checks | Required checks always report; simplest correct setup |
 | D-066 | `permissions: contents: read` | Default token permissions | No job writes anything |
+| D-071 | App-prefixed check names (`Web Build`, `API RSpec`, …) | Bare job names (`Build`, `RSpec`) | A required check is matched by name; a generic name could be satisfied by an unrelated job |
 | — | Dockerfile removed | Keeping the template's | It assumed npm and could not build; hosting is deferred (D-036) |
 | D-019 (partial) | `lang="es"` only | Template's `lang="en"`; full SEO now | Correct language is not optional; the rest of the SEO baseline is a later feature |
 
@@ -1264,14 +1558,22 @@ Only the trigger block: the comment above `on:` was added, and the three `paths:
 5. **Rewriting `package.json` by hand dropped corepack's integrity hash.** `corepack use` writes `pnpm@12.4.2+sha512.…`; the first hand-written file had only `pnpm@12.4.2`. Both work, but the hash is what lets corepack reject a tampered download, so it was restored.
 6. **TypeScript 7 is "latest" and still wrong here.** Always read the peer ranges of your lint and test tooling (`npm view typescript-eslint peerDependencies`) before upgrading the compiler.
 7. **The Jest wall.** See the two tables in step 6. The most confusing error is `TS1295` under `verbatimModuleSyntax`: it looks like a problem in your code, but it comes from compiling ES-module source to CommonJS for Jest. The fix is a Jest-only tsconfig, not a change to the app's settings.
-8. **`import.meta.env` is loosely typed by default.** Assigning the whole `import.meta.env` object to your own interface fails with `TS2559 … has no properties in common`. Reading a variable by its full name compiles, but as `any`, so a misspelled name compiles too. Read each variable by its full name *and* declare it in `app/vite-env.d.ts`.
+8. **`import.meta.env` is loosely typed by default.** Assigning the whole `import.meta.env` object to your own interface fails with `TS2559 … has no properties in common`. Reading a variable by its full name compiles, but as `any`, so a misspelled name compiles too. Read each variable by its full name *and* declare it in `app/vite-env.d.ts`. Reading by full name also matters for safety. Code that reads `import.meta.env` as a whole object, for example `JSON.stringify(import.meta.env)`, makes Vite inline **every** `VITE_` variable into the bundle, including a wrongly prefixed secret that no code references. QA proved it with a throwaway `VITE_API_INTERNAL_TOKEN`.
 9. **Vite does not load `.env` into `process.env`.** Only `VITE_` names are read, and only into `import.meta.env`. Server-only values must come from the real process environment. It is easy to believe the opposite because `pnpm dev` "reads .env".
 10. **A server module imported by nothing proves nothing.** `pnpm build` passing with an unused `.server` file shows only that nothing imports it. The negative experiment in step 9 is what shows the guard works.
 11. **`react-router-serve` changes port silently.** With Rails on 3000, it picks a random free port. Set `PORT`.
 12. **`git check-ignore -v` reports the nearest rule, not every rule.** Seeing the app-level rule for `master.key` does not mean the root rule is missing. Test the root rule on its own (step 12).
 13. **Narrowing `tmp/` made two files appear, not one.** `apps/api/tmp/pids/.keep` became trackable too, because Rails un-ignores it the same way as `tmp/.keep`.
 14. **An empty lint run is not proof.** Confirm that the files are linted and that a planted error is caught (step 10).
-15. **Deliberately not done:** no API calls or data loaders, no admin routes, no Cloudinary, no SEO tags beyond `lang`, no fonts or colours from the mockups, no `eslint-plugin-react`, no Dockerfile, no development `.env` loader for server-only values (nothing reads them yet), and no required-status-check configuration (step 14 and section 9).
+15. **An ESM-only dependency stops Jest.** react-router 8 ships only ES modules (`"type": "module"` and no `require` entry in its `exports`). The first time a test imported `root.tsx`, Jest stopped with `Must use import to load ES Module: …/react-router/dist/production/index.js`. Jest's message offers three ways out, and none is small:
+    - Running Node with `--experimental-vm-modules` got past that error and straight into the next, `ReferenceError: TextEncoder is not defined` inside react-router, under an "experimental feature" warning.
+    - Letting Jest transform `node_modules` would mean compiling react-router's JavaScript too, with ts-jest or an added Babel.
+    - The option the error does not mention is the one used: the test replaces the package with `jest.mock` (step 6). That works while a test needs one small, pure function from react-router. Phase 4's route tests will need more of it (`Link`, `useLoaderData`), so the project has to choose how Jest loads react-router before then. The Feature 3 report raises that question.
+16. **Type-only imports still need their files under ts-jest.** `import type { Route } from "./+types/root"` disappears from the compiled JavaScript, but ts-jest type-checks first. On a fresh checkout, where `react-router typegen` has never run, the suite fails with `TS2307: Cannot find module './+types/root'`. On a machine that ran `pnpm typecheck` or `pnpm dev` before, `.react-router/` already exists and the suite passes, so the failure would have appeared only in CI. That is why `pnpm test` runs typegen first.
+17. **Reading a flag through an object costs dead-code removal.** In the template, `import.meta.env.DEV` became the literal `false` in the production build, and the minifier deleted `ErrorBoundary`'s development-only branch; the built `root-*.js` did not contain `.stack` at all. `clientEnv.DEV` is a property read at runtime (the build contains `{DEV:!1,…}`), so that branch now ships and never runs. Behaviour is identical and the bundle is a few bytes larger. That is the price of testability, and it is small.
+18. **Configuration that does nothing still teaches something wrong.** The first `tsconfig.jest.json` set `"module": "CommonJS"`, and its comment said Jest needed it. QA removed it on a scratch copy and every test still passed, because ts-jest forces CommonJS on its own. Test each override by removing it, as the tables in step 6 do.
+19. **`git checkout <file>` discards your own edits too.** During the fix round, a throwaway experiment was undone with `git checkout jest.config.js tsconfig.jest.json`, and that also wiped the uncommitted fixes in those two files, which had to be applied again. Commit or `git stash` your work before experimenting on the same files.
+20. **Deliberately not done:** no API calls or data loaders, no tests for the `home.tsx` route yet (Phase 4), no admin routes, no Cloudinary, no SEO tags beyond `lang`, no fonts or colours from the mockups, no `eslint-plugin-react`, no Dockerfile, no development `.env` loader for server-only values (nothing reads them yet), and no required-status-check configuration (step 14 and section 9).
 
 ## 8. How to verify it yourself
 
@@ -1283,7 +1585,8 @@ pnpm install --frozen-lockfile                 # Lockfile is up to date … Done
 pnpm lint                                      # no findings
 pnpm format:check                              # All matched files use Prettier code style!
 pnpm typecheck                                 # no errors
-pnpm test                                      # Test Suites: 3 passed · Tests: 12 passed
+pnpm test                                      # Test Suites: 4 passed · Tests: 16 passed
+grep -rln 'import\.meta\.env' app              # app/config/client-env.ts, app/vite-env.d.ts
 pnpm build                                     # ✓ built … (client and ssr environments)
 PORT=3100 pnpm start &
 sleep 2
@@ -1299,12 +1602,12 @@ From the repository root:
 git check-ignore -v apps/web/anything.key      # .gitignore:31:*.key …
 git ls-files apps/api/tmp                      # apps/api/tmp/.keep, apps/api/tmp/pids/.keep
 git status --porcelain --untracked-files=all   # empty: no key file, no .env, no build output
-gh pr checks 2                                 # RuboCop, RSpec, ESLint, TypeScript, Jest, Build: pass
+gh pr checks 2                                 # API RuboCop, API RSpec, Web ESLint, Web TypeScript, Web Jest, Web Build: pass
 ```
 
 ## 9. What comes next
 
-- **Required status checks.** After this PR merges and both workflows have run on `main`, the owner adds `RuboCop`, `RSpec`, `ESLint`, `TypeScript`, `Jest` and `Build` as required checks on `main` (D-060). The exact command is in the Feature 3 report. D-065 is what makes this safe.
+- **Required status checks.** After this PR merges and both workflows have run on `main`, the owner adds `API RuboCop`, `API RSpec`, `Web ESLint`, `Web TypeScript`, `Web Jest` and `Web Build` as required checks on `main` (D-060, D-070, D-071). The exact command is in the Feature 3 report. D-065 is what makes this safe.
 - **Feature 4** adds the API's security baseline (CORS, CSRF, rate limits, including the `X-Internal-Token` exemption this chapter's `API_INTERNAL_TOKEN` will carry).
 - **Phase 4** builds the real public page: the single `GET /api/v1/public/site` loader (D-046), which is the first real user of `getServerConfig()`, the `Cache-Control` header (D-045), and the sections and design from the mockups. The SEO baseline (D-019) comes with it.
 - **Feature 19** brings the admin area under `/admin`. It will be **client-rendered**: admins need no search ranking, their pages depend on a logged-in session cookie that only the browser holds, and every admin screen fetches its own data from the API with `credentials: 'include'`, using `publicConfig.apiBaseUrl` from this chapter.
@@ -1319,6 +1622,7 @@ gh pr checks 2                                 # RuboCop, RSpec, ESLint, TypeScr
 - **`import.meta.env` / `VITE_` prefix** — Vite's build-time environment object / the prefix a variable needs to be exposed, and published, through it.
 - **jsdom / React Testing Library / jest-dom** — a DOM in Node / rendering and querying components like a user / extra DOM matchers for `expect`.
 - **Loader** — a route export that runs only on the server before rendering; removed from the client build.
+- **`jest.mock` (test double)** — a stand-in for a real module inside a test: with a factory, every import of that module in the test file receives the factory's object, and the real module is never loaded.
 - **`minimumReleaseAge`** — pnpm's rule refusing versions published too recently (24 hours by default here).
 - **`moduleNameMapper`** — Jest's table of import-path regular expressions mapped to replacement files.
 - **Required status check** — a CI check that must report success before GitHub allows a merge.
