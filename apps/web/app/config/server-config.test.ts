@@ -40,4 +40,44 @@ describe("readServerConfig", () => {
       /API_INTERNAL_URL.*API_INTERNAL_TOKEN/s,
     );
   });
+
+  it("trims surrounding whitespace from the values it returns", () => {
+    const config = readServerConfig({
+      API_INTERNAL_URL: " http://x ",
+      API_INTERNAL_TOKEN: "\ta-development-token\n",
+    });
+
+    expect(config).toEqual({
+      apiInternalUrl: "http://x",
+      apiInternalToken: "a-development-token",
+    });
+  });
+});
+
+describe("getServerConfig", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    // A fresh copy of the module, so its cache starts empty in every test.
+    jest.resetModules();
+    process.env = {
+      ...originalEnv,
+      API_INTERNAL_URL: "http://first",
+      API_INTERNAL_TOKEN: "first-token",
+    };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("reads the process environment once and reuses the result", async () => {
+    const { getServerConfig } = await import("~/config/server-config.server");
+
+    const first = getServerConfig();
+    process.env.API_INTERNAL_URL = "http://second";
+
+    expect(getServerConfig()).toBe(first);
+    expect(getServerConfig().apiInternalUrl).toBe("http://first");
+  });
 });
