@@ -13,8 +13,9 @@
  *    imports are mapped to inert stubs.
  *  - Vite replaces `import.meta.env` at build time. ts-jest compiles to
  *    CommonJS, and TypeScript refuses to compile `import.meta` for CommonJS
- *    (error TS1343), so the single module that reads it is mapped to a stub. Everything that interprets those
- *    values lives in plain modules that tests can call directly.
+ *    (error TS1343), so the single module that reads it is mapped to a stub.
+ *    Everything that interprets those values lives in plain modules that
+ *    tests can call directly.
  *
  * @type {import('jest').Config}
  */
@@ -28,7 +29,10 @@ export default {
   moduleNameMapper: {
     "^~/config/client-env$": "<rootDir>/test/stubs/client-env.ts",
     "^~/(.*)$": "<rootDir>/app/$1",
+    // Needed since app/root.test.tsx: root.tsx imports app.css.
     "\\.css$": "<rootDir>/test/stubs/style.ts",
+    // Not used by any test yet. It is ready for the first component that
+    // imports an image (Phase 4).
     "\\.(svg|png|jpe?g|gif|webp|avif|ico)$": "<rootDir>/test/stubs/asset.ts",
   },
 
