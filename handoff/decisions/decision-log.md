@@ -573,10 +573,11 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
 - **`git check-ignore` reports the nearest `.gitignore`:** a correct explanation of git behaviour, verified by temporarily removing the nearer rule.
 - **Removed template files** (Dockerfile, `app/welcome/`, fonts, README): all out of place for this app or belonging to later features.
 
-### D-070 · Proposed — Required status checks on `main`
+### D-070 · Accepted — Required status checks on `main`
 - **Decision:** after PR #2 merges and both workflows run on `main`, require these six checks: `RuboCop`, `RSpec`, `ESLint`, `TypeScript`, `Jest`, `Build`. Each is tied to the GitHub Actions app, so no other app can satisfy it.
 - **`strict: false`** (recommended): a PR does not have to be rebased onto the latest `main` before merging.
   - **Rationale:** one maintainer merging one PR at a time, with squash merges. `strict: true` would force a rebase and a full CI re-run whenever `main` moved, and `main` moves with every `docs N` commit.
   - **Accepted risk:** a PR's checks could have passed against an older `main`. With one open PR at a time and `docs` commits touching only `handoff/`, that risk is negligible.
 - **Command:** the full `PUT` payload is in the Feature 3 report, section "Required status checks". It rewrites the whole protection object with every other value copied from the live settings, so nothing else changes.
-- **Status:** Waiting for the owner's confirmation of `strict: false`. The command is run by the owner or the orchestrator after PR #2 merges.
+- **Status:** Accepted by the owner on 2026-09-17, with `strict: false`. The command is run after PR #2 merges and both workflows have run on `main`.
+- **Rejected alternative:** `strict: true`. It would force a rebase and a full CI re-run on nearly every merge, because `docs N` commits move `main` constantly, for almost no added protection with a single maintainer.

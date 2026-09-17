@@ -28,11 +28,10 @@
 1. The owner dispatches the Feature 3 QA agent from a new session.
 2. The orchestrator reviews the QA report; fix rounds per D-054.
 3. The owner squash-merges PR #2.
-4. Once both workflows have run on `main`: configure the six required status checks (D-070). **Waiting for the owner to confirm `strict: false`.** The full command is in the Feature 3 report.
+4. Once both workflows have run on `main`: configure the six required status checks with `strict: false` (D-070, accepted). The full command is in the Feature 3 report.
 5. Phase 2 begins with Feature 4 (API security baseline).
 
 ## Open owner decisions
-- **D-070:** `strict: false` for required status checks (recommended).
 - **Not urgent:** GitHub Issues are enabled on a repository anyone can read; consider disabling them.
 
 ## Carry-over notes for later features
@@ -53,7 +52,7 @@
 ## Counters (D-035, D-053)
 - Last `Feature`: 3 (in review; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 6 (the number is reused because the stray `beb2b45` never reached `main`; see D-068).
+- Last `docs`: 7.
 
 ## Blockers
 - None.
