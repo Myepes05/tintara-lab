@@ -574,10 +574,26 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
 - **Removed template files** (Dockerfile, `app/welcome/`, fonts, README): all out of place for this app or belonging to later features.
 
 ### D-070 · Accepted — Required status checks on `main`
-- **Decision:** after PR #2 merges and both workflows run on `main`, require these six checks: `RuboCop`, `RSpec`, `ESLint`, `TypeScript`, `Jest`, `Build`. Each is tied to the GitHub Actions app, so no other app can satisfy it.
+- **Decision:** after PR #2 merges and both workflows run on `main`, require six checks. **Their names were changed by D-071** to `API RuboCop`, `API RSpec`, `Web ESLint`, `Web TypeScript`, `Web Jest` and `Web Build`. Each is tied to the GitHub Actions app, so no other app can satisfy it.
 - **`strict: false`** (recommended): a PR does not have to be rebased onto the latest `main` before merging.
   - **Rationale:** one maintainer merging one PR at a time, with squash merges. `strict: true` would force a rebase and a full CI re-run whenever `main` moved, and `main` moves with every `docs N` commit.
   - **Accepted risk:** a PR's checks could have passed against an older `main`. With one open PR at a time and `docs` commits touching only `handoff/`, that risk is negligible.
 - **Command:** the full `PUT` payload is in the Feature 3 report, section "Required status checks". It rewrites the whole protection object with every other value copied from the live settings, so nothing else changes.
 - **Status:** Accepted by the owner on 2026-09-17, with `strict: false`. The command is run after PR #2 merges and both workflows have run on `main`.
 - **Rejected alternative:** `strict: true`. It would force a rebase and a full CI re-run on nearly every merge, because `docs N` commits move `main` constantly, for almost no added protection with a single maintainer.
+
+### D-071 · Accepted — CI check names carry their app prefix
+- **Trigger:** Feature 3 QA noted that generic job names like `Build` and `Jest` would be satisfied by any future GitHub Actions job with the same name, for example a deploy workflow's `Build`. Tying a check to the Actions app (D-070) does not prevent that, because every workflow runs under the same app.
+- **Decision:** job names become `API RuboCop`, `API RSpec`, `Web ESLint`, `Web TypeScript`, `Web Jest` and `Web Build`. Any future workflow's job names must not collide with these.
+- **Rationale:** renaming now costs one line per job. Renaming after they are required would mean updating branch protection at the same moment, or leaving every PR pending.
+- **Amends D-070:** the required checks are these six new names.
+
+### D-072 · Accepted — Feature 3 QA outcome and fix round 1
+- **QA verdict:** FAIL, with one `major` finding (F-1: `ErrorBoundary` reads `import.meta.env.DEV` directly, breaking `CLAUDE.md` §6 and falsifying the "only reader" claim). Also four `minor` and five `nit` findings, all small.
+- **Owner and orchestrator calls:**
+  - F-1 stays `major`. QA had offered a downgrade because the code came from the template and chapter §5 disclosed it. That was declined: an explicit project rule was broken, and the false claim appears in four places.
+  - All other findings are fixed in the same round.
+  - F-3's redundant `module` override is removed, since configuration that does nothing teaches the wrong thing.
+  - F-6's CSS and image mappers stay as forward-looking, with truthful comments; Phase 4 needs them.
+  - F-10's code was already correct (`client-env.ts` reads the variable by full name). Only the documentation changes.
+- **Prompt:** `prompts/implementation/feature-003-web-skeleton-fix-r1.md`. A QA re-check follows (D-054), because the round changes application code and workflows.

@@ -11,7 +11,7 @@
 | Discovery and planning | Done | Decisions D-000 to D-070 · `plan/master-plan.md` v1 · `CLAUDE.md` · `templates/` |
 | Feature 1 — monorepo bootstrap | **Merged** (`ab52b86`, direct to `main` per D-049) | Verified by the orchestrator, no QA agent (D-061) |
 | Feature 2 — Rails API skeleton | **Merged** (`af4afec`, PR #1) | QA: PASS WITH NOTES, all findings fixed in fix round 1 |
-| Feature 3 — web skeleton | **Implementation done, QA pending** | PR #2, branch `feature/3-web-skeleton` |
+| Feature 3 — web skeleton | **QA: FAIL (one major) → fix round 1** | PR #2, branch `feature/3-web-skeleton` |
 | Learning chapters | 01, 02 merged · 03 in PR #2 | `learning/` (D-064, D-067) |
 
 ## Feature 3 — detail
@@ -22,13 +22,14 @@
   - `server-config.server.ts` exists and fails loudly on missing variables.
   - Scope outside `apps/web`: both workflows, the root `.gitignore`, the `CLAUDE.md` §7 Web line, two empty `apps/api/tmp` `.keep` files, the report, chapter 03 and its index row.
 - **The report's ten deviations are accepted** (D-069).
-- **QA prompt:** `prompts/qa/qa-feature-003-web-skeleton.md`. Waiting for the owner to dispatch it.
+- **QA (2026-09-17): FAIL.** One `major` (F-1: `ErrorBoundary` reads `import.meta.env.DEV` directly), four `minor`, five `nit`. Build, SSR, the `.server` boundary (proved by deliberately breaking it), tests, CI, versions and `.gitignore` all verified clean. Report: `agent-outputs/qa/qa-feature-003-web-skeleton.md`.
+- **Fix round 1:** `prompts/implementation/feature-003-web-skeleton-fix-r1.md` fixes all ten findings and renames the six CI checks (D-071, D-072). Waiting for the owner to dispatch it. A QA re-check follows.
 
 ## Next
-1. The owner dispatches the Feature 3 QA agent from a new session.
-2. The orchestrator reviews the QA report; fix rounds per D-054.
+1. The owner dispatches Feature 3 fix round 1 (a new session is fine: the prompt is self-contained).
+2. The orchestrator reviews the fix report and writes the QA re-check prompt (`qa-feature-003-web-skeleton-r1.md`).
 3. The owner squash-merges PR #2.
-4. Once both workflows have run on `main`: configure the six required status checks with `strict: false` (D-070, accepted). The full command is in the Feature 3 report.
+4. Once both workflows have run on `main`: configure the six required status checks with `strict: false` and the D-071 names (D-070). The full command is in the Feature 3 report, updated by the fix round.
 5. Phase 2 begins with Feature 4 (API security baseline).
 
 ## Open owner decisions
@@ -52,7 +53,7 @@
 ## Counters (D-035, D-053)
 - Last `Feature`: 3 (in review; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 7.
+- Last `docs`: 8.
 
 ## Blockers
 - None.
