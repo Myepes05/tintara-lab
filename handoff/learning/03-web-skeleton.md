@@ -1147,7 +1147,7 @@ pnpm format:check  # All matched files use Prettier code style!
 pnpm lint          # no output after "eslint . --max-warnings=0"
 ```
 
-`--max-warnings=0` turns every warning into a failure, which is how "zero warnings" becomes something CI can enforce. **An empty lint output proves nothing on its own.** Check that ESLint actually lints your files: `pnpm exec eslint . --format json` lists 20 files. Then plant a mistake, for example an unused `const` in a new file under `app/`, and watch `pnpm lint` report `'unused' is assigned a value but never used  @typescript-eslint/no-unused-vars`. Delete the file afterwards.
+`--max-warnings=0` turns every warning into a failure, which is how "zero warnings" becomes something CI can enforce. **An empty lint output proves nothing on its own.** Check that ESLint actually lints your files: `pnpm exec eslint . --format json` lists 21 files. Then plant a mistake, for example an unused `const` in a new file under `app/`, and watch `pnpm lint` report `'unused' is assigned a value but never used  @typescript-eslint/no-unused-vars`. Delete the file afterwards.
 
 Commit: `git add apps/web && git commit -m "Feature 3: add ESLint and Prettier"`.
 
@@ -1522,7 +1522,7 @@ export function getServerConfig(): ServerConfig {
 
 ### `app/root.tsx` (the parts that matter)
 
-`Layout` renders the whole HTML document, `<html lang="es">`, `<head>` and `<body>`, on the server for every request. `<Meta />` and `<Links />` output each route's `meta()` and `links()` results, which is how `<title>Tintara Lab</title>` from `home.tsx` reached the HTML in step 8. `<Scripts />` adds the client bundle that hydrates the page. `ErrorBoundary` is the template's error page. Its text is still the template's English; a later feature translates it. One line changed. The template read `import.meta.env.DEV` directly, which broke the project rule that components read environment values only through the config module (`CLAUDE.md` §6). It also made `root.tsx` impossible to import in a test, because of `TS1343`. Now `DEV` travels like any other value: `ClientEnv` declares it, `client-env.ts` reads it by its full name, the Jest stub sets it to `false`, and `root.test.tsx` switches it with `jest.replaceProperty`.
+`Layout` renders the whole HTML document, `<html lang="es">`, `<head>` and `<body>`, on the server for every request. `<Meta />` and `<Links />` output each route's `meta()` and `links()` results, which is how `<title>Tintara Lab</title>` from `home.tsx` reached the HTML in step 8. `<Scripts />` adds the client bundle that hydrates the page. `ErrorBoundary` is the template's error page. Its text is still the template's English; a later feature translates it. Two lines changed: the `clientEnv` import and the condition. The template read `import.meta.env.DEV` directly, which broke the project rule that components read environment values only through the config module (`CLAUDE.md` §6). It also made `root.tsx` impossible to import in a test, because of `TS1343`. Now `DEV` travels like any other value: `ClientEnv` declares it, `client-env.ts` reads it by its full name, the Jest stub sets it to `false`, and `root.test.tsx` switches it with `jest.replaceProperty`.
 
 ### `tsconfig.json` (what changed and what was already right)
 
