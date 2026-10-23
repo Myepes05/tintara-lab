@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // ts-jest hands Jest CommonJS, because Jest runs test files as CommonJS
+    // unless it is put into its experimental ESM mode. ts-jest sets `module`
+    // to CommonJS by itself outside that mode, so this file does not repeat
+    // it. The one setting that has to change is verbatimModuleSyntax: the app
+    // turns it on, and it forbids writing `import`/`export` in a file that is
+    // emitted as CommonJS.
+    "verbatimModuleSyntax": false
+  }
+}

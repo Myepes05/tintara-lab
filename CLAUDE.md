@@ -149,7 +149,7 @@ Commands are filled in by the tasks that create them. If a command here is missi
 
 - **Postgres** (from the repo root, after `cp .env.example .env`): start `docker compose up -d` · health `docker compose ps` and `docker compose exec db pg_isready` · stop `docker compose down` (keeps the `db_data` volume) · logs `docker compose logs -f db`
 - **API** (from `apps/api`, with Postgres running): install `bundle install` · database `bin/rails db:prepare` · server `bin/rails server` (http://localhost:3000, health check `GET /api/v1/health`) · specs `bundle exec rspec` · lint `bundle exec rubocop`. Credentials come from the root `.env`; no `apps/api/.env` is needed.
-- **Web:** _defined by Feature 3_
+- **Web** (from `apps/web`, after `corepack enable` once per machine; Node from `apps/web/.node-version`): install `pnpm install` · dev server `pnpm dev` (http://localhost:5173) · specs `pnpm test` · lint `pnpm lint` and `pnpm format:check` · typecheck `pnpm typecheck` · build `pnpm build` · serve the build `pnpm start` (port 3000, or a random free port if 3000 is taken; it prints the URL; `PORT=<port> pnpm start` fixes it). Variables are documented in `apps/web/.env.example`; nothing requires them yet.
 
 ## 7b. The learning chapter (D-064)
 

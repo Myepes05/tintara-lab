@@ -1,0 +1,8 @@
+# Generated or installed output
+build/
+.react-router/
+coverage/
+node_modules/
+
+# Written by pnpm; reformatting it would only create churn
+pnpm-lock.yaml

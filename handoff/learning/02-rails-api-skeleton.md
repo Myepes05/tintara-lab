@@ -530,6 +530,8 @@ jobs:
         run: bundle exec rspec
 ```
 
+> **Later changes.** This is the file as this chapter leaves it. Chapter 03 edits it twice: it removes the `paths:` filter from the `pull_request` trigger (D-065), and it renames the jobs to `API RuboCop` and `API RSpec` (D-071). From then on, GitHub shows the checks under those two names.
+
 Section by section:
 
 - **`on:`** — the triggers. Pull requests targeting `main` (so nothing merges unverified) and pushes to `main` (so the branch everyone builds on is always known-good).
