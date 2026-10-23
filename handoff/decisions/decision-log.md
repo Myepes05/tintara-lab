@@ -632,3 +632,13 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
 - **N-3** is handled by the orchestrator in the status file's carry-over notes. No agent task.
 - **Verification:** the round touches only chapter 03 and the report, so the orchestrator verifies it with a diff read and `gh pr checks 2` instead of a QA re-check (an exception to D-054's re-check step, limited to text-only rounds with no `blocker` or `major` open).
 - **Prompt:** `prompts/implementation/feature-003-web-skeleton-fix-r2.md`.
+
+### D-077 · Accepted — Feature 3 closed: fix round 2 verified, merged, required checks on `main`
+- **Fix round 2 verified by the orchestrator on 2026-10-22,** as D-076 allows:
+  - `git diff --stat a7ac6bc..b634f9f` shows only chapter 03 (2 lines) and the Feature 3 report.
+  - N-1 now says 21 files, matching the agent's measured `eslint --format json` output and QA's independent count. N-2 names both changed lines.
+  - All six checks pass on the final head `b634f9f`.
+- **Merged:** PR #2 was squash-merged by the owner as `a528d21`. Both workflows ran on `main` and passed, reporting the six D-071 job names.
+- **Required status checks applied (D-070):** the owner ran the Feature 3 report's `PUT` on 2026-10-22. The readback shows `strict: false` and the six checks tied to app `15368` (GitHub Actions). Every other protection field is unchanged.
+- **Agent question R2-Q1:** `web.yml`'s comment says "the same five setup steps", but each job has six. The orchestrator confirmed it. It is a comment, not output, so it is fixed in the next PR that touches `web.yml`, in both the file and chapter 03's listing, rather than in a fix round 3.
+- **Historical output in chapters:** a chapter may keep the real output of an earlier, clearly labelled draft of a file (chapter 03 line 898). D-067's accuracy rule applies to output the reader is told to reproduce.

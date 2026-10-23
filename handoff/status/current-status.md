@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-10-22 by the orchestrator
 
-## Current stage: Phase 1 — Foundation · Feature 3 in QA
+## Current stage: Phase 1 done · Phase 2 next (Feature 4)
 
 ## Where things stand
 
@@ -11,8 +11,8 @@
 | Discovery and planning | Done | Decisions D-000 to D-070 · `plan/master-plan.md` v1 · `CLAUDE.md` · `templates/` |
 | Feature 1 — monorepo bootstrap | **Merged** (`ab52b86`, direct to `main` per D-049) | Verified by the orchestrator, no QA agent (D-061) |
 | Feature 2 — Rails API skeleton | **Merged** (`af4afec`, PR #1) | QA: PASS WITH NOTES, all findings fixed in fix round 1 |
-| Feature 3 — web skeleton | **QA re-check: PASS WITH NOTES → fix round 2 (text only) pending** | PR #2, branch `feature/3-web-skeleton` |
-| Learning chapters | 01, 02 merged · 03 in PR #2 | `learning/` (D-064, D-067) |
+| Feature 3 — web skeleton | **Merged** (`a528d21`, PR #2) | QA: FAIL → fix round 1 → PASS WITH NOTES → fix round 2 (text only), verified by the orchestrator (D-077) |
+| Learning chapters | 01, 02, 03 merged | `learning/` (D-064, D-067) |
 
 ## Feature 3 — detail
 - **Orchestrator verification (2026-09-17):**
@@ -28,13 +28,12 @@
   - The agent's open question on testing real router components became **D-074 (accepted)**: a spike before Phase 4, on option (b) with (c) as the fallback.
 - **QA re-check (2026-09-17): PASS WITH NOTES** on `a7ac6bc`. F-1 to F-10 verified fixed; all six checks green. New: N-1 `minor` (chapter 03 step 10 says 20 linted files, really 21), N-2 and N-3 `nit`. Report: `agent-outputs/qa/qa-feature-003-web-skeleton-r1.md`.
 - **Fix round 2 (D-076):** the owner chose to fix N-1 and N-2 before merging. Text-only, so the orchestrator verifies it with a diff read and `gh pr checks 2`; no QA re-check. Prompt: `prompts/implementation/feature-003-web-skeleton-fix-r2.md`. N-3 is handled in the carry-over notes below.
+- **Fix round 2 verified (2026-10-22, D-077):** only chapter 03 and the report changed; six checks green on `b634f9f`. PR #2 squash-merged as `a528d21`; both workflows passed on `main`.
+- **Required status checks are live on `main` (D-070, D-077):** `strict: false`, the six D-071 names, tied to GitHub Actions (app `15368`). Applied by the owner on 2026-10-22; other protection fields unchanged.
 
 ## Next
-1. The owner dispatches Feature 3 fix round 2.
-2. The orchestrator verifies it (diff read: only chapter 03 and the report change; six checks green).
-3. The owner squash-merges PR #2.
-4. Once both workflows have run on `main`: configure the six required status checks with `strict: false` and the D-071 names (D-070). The full command is in the Feature 3 report, updated by the fix round.
-5. Phase 2 begins with Feature 4 (API security baseline).
+1. The orchestrator writes the Feature 4 prompt (API security baseline, Phase 2) for the owner's review.
+2. The D-074 spike (Jest with real React Router components) runs before any Phase 4 prompt.
 
 ## Open owner decisions
 - **Not urgent:** GitHub Issues are enabled on a repository anyone can read; consider disabling them.
@@ -46,18 +45,19 @@
 - **Dependency upkeep:** bump React Router to 8.4.x and `@types/node` once they are past pnpm's release-age window. On every React Router upgrade, re-check the hand-copied `isRouteErrorResponse` in `apps/web/app/root.test.tsx` against the new version's `dist/production/lib/router/utils.js`, or remove it through the D-074 spike (QA N-3). Node 25+ no longer bundles corepack, so revisit CI and `CLAUDE.md` when upgrading Node.
 - **When real components land:** consider `eslint-plugin-jsx-a11y` (accessibility supports D-019).
 - **Deployment:** pick Railway's Postgres 18 image explicitly; its `:latest` tag resolves to 16 (D-058). Configure the Rails trusted proxies (D-029). Set `RAILS_MASTER_KEY`, or plain environment variables, on Railway.
+- **Next PR that touches `web.yml`:** its comment says "the same five setup steps" but each job has six; fix the file and chapter 03's listing together (D-077).
 - **Brakeman and bundler-audit** are installed but not run in CI; cheap to add to the API lint job once there is real code.
 
 ## Process notes for the next orchestrator
 - **One shared checkout (D-068).** Before any `docs N` commit: check that `git branch --show-current` prints `main`, stage explicit paths only, and confirm `origin/main` moved. Assert every text replacement in edit scripts. The stray commit `beb2b45` sits on the merged `feature/2-rails-api-skeleton` branch and can be ignored or deleted.
-- **Untracked `apps/web/build/` and `apps/web/.react-router/`** appear on `main` until PR #2 merges. Never stage them.
+- **Required checks:** every PR to `main` now needs the six checks green before it can merge. Direct `docs N` pushes still go through the owner's admin bypass.
 - **Repository visibility (D-059):** readable by everyone, by the owner's choice. Nothing that should stay unpublished goes into git.
 - **The Rails master key** is backed up by the owner (confirmed 2026-09-17).
 
 ## Counters (D-035, D-053)
-- Last `Feature`: 3 (in review; `Feature 4` is next).
+- Last `Feature`: 3 (merged; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 11.
+- Last `docs`: 12.
 
 ## Blockers
 - None.
