@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-10-22 by the orchestrator
 
-## Current stage: Phase 1 done · Phase 2 next (Feature 4)
+## Current stage: Phase 2 — API security · Feature 4 prompt ready
 
 ## Where things stand
 
@@ -32,14 +32,15 @@
 - **Required status checks are live on `main` (D-070, D-077):** `strict: false`, the six D-071 names, tied to GitHub Actions (app `15368`). Applied by the owner on 2026-10-22; other protection fields unchanged.
 
 ## Next
-1. The orchestrator writes the Feature 4 prompt (API security baseline, Phase 2) for the owner's review.
-2. The D-074 spike (Jest with real React Router components) runs before any Phase 4 prompt.
+1. The owner dispatches Feature 4 (API security baseline). Prompt: `prompts/implementation/feature-004-api-security-baseline.md`; design choices in D-078 (error format), D-079 (CSRF, Origin, session cookie) and D-080 (rate limits, trusted proxies).
+2. The orchestrator reviews the PR and writes the Feature 4 QA prompt.
+3. The D-074 spike (Jest with real React Router components) runs before any Phase 4 prompt.
 
 ## Open owner decisions
 - **Not urgent:** GitHub Issues are enabled on a repository anyone can read; consider disabling them.
 
 ## Carry-over notes for later features
-- **Feature 4:** `config/environments/test.rb` uses `:null_store`; rate-limit specs need a real cache store in test.
+- **Feature 4:** `config/environments/test.rb` uses `:null_store`; rate-limit specs need a real cache store in test (now requirement 5.7 of the Feature 4 prompt, D-080).
 - **Phase 4, first loader:** Vite does not load `.env` into `process.env`, so development needs a way to supply `API_INTERNAL_URL` and `API_INTERNAL_TOKEN` (for example `node --env-file`).
 - **Feature 14 or 18:** `root.tsx`'s `ErrorBoundary` still has the template's English text; user-facing strings must be Spanish.
 - **Dependency upkeep:** bump React Router to 8.4.x and `@types/node` once they are past pnpm's release-age window. On every React Router upgrade, re-check the hand-copied `isRouteErrorResponse` in `apps/web/app/root.test.tsx` against the new version's `dist/production/lib/router/utils.js`, or remove it through the D-074 spike (QA N-3). Node 25+ no longer bundles corepack, so revisit CI and `CLAUDE.md` when upgrading Node.
@@ -57,7 +58,7 @@
 ## Counters (D-035, D-053)
 - Last `Feature`: 3 (merged; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 12.
+- Last `docs`: 13.
 
 ## Blockers
 - None.

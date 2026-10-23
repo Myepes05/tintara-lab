@@ -642,3 +642,30 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
 - **Required status checks applied (D-070):** the owner ran the Feature 3 report's `PUT` on 2026-10-22. The readback shows `strict: false` and the six checks tied to app `15368` (GitHub Actions). Every other protection field is unchanged.
 - **Agent question R2-Q1:** `web.yml`'s comment says "the same five setup steps", but each job has six. The orchestrator confirmed it. It is a comment, not output, so it is fixed in the next PR that touches `web.yml`, in both the file and chapter 03's listing, rather than in a fix round 3.
 - **Historical output in chapters:** a chapter may keep the real output of an earlier, clearly labelled draft of a file (chapter 03 line 898). D-067's accuracy rule applies to output the reader is told to reproduce.
+
+## Feature 4 design choices (orchestrator and owner, 2026-10-22)
+
+### D-078 · Accepted — Standard JSON error format
+- **Shape:** every API error response is `{ "error": { "code": "<snake_case>", "message": "<English sentence>", "details": { … } } }`. `details` is optional; Phase 3 uses it for per-field validation errors (`{ "name": ["can't be blank"] }`).
+- **`code`** is stable and machine-readable; the frontend maps it to the Spanish text the user sees. **`message`** is English, for developers and logs (owner's choice, consistent with CLAUDE.md §4.7).
+- **Codes introduced by Feature 4:** `invalid_origin` (403), `invalid_csrf_token` (403), `rate_limited` (429), `not_found` (404), `bad_request` (400). New codes are added by the task that needs them and collected in the API contract (D-051).
+- **Rejected alternatives:**
+  - RFC 9457 `application/problem+json`: more fields to keep consistent (`type` URIs, `title`, `status`) for no benefit with one first-party client.
+  - An `errors` array (JSON:API style): heavier for the common single-error case; per-field errors fit in `details`.
+
+### D-079 · Accepted — CSRF, Origin check and the session cookie in API mode
+- **Session cookie:** API mode gets the cookie and cookie-store session middleware back. Cookie key `_tintara_session`, httpOnly, `SameSite=Lax`, no `Domain` attribute (host-only), `Secure` in production (D-016, D-039). It holds the CSRF secret now and nothing else; the database-backed admin session arrives in Feature 5.
+- **Token endpoint:** `GET /api/v1/csrf_token` returns `{ "csrf_token": "…" }`. The browser sends it back in `X-CSRF-Token` on every state-changing request (D-039).
+- **Origin check:** every request other than `GET`, `HEAD` and `OPTIONS` must carry an `Origin` header exactly equal to `FRONTEND_ORIGIN`. A wrong **or missing** `Origin` gets 403 `invalid_origin` (owner's choice: only non-browser clients omit it, and admins use only the browser). Rails' built-in origin check compares against the API's own host, which can never match a cross-origin frontend, so it is replaced by this one.
+- **Forgery protection stays on in the test environment,** with a spec helper that fetches a token. Every later request spec for a mutating endpoint then exercises the real protection instead of bypassing it.
+- **Rejected alternative:** accepting a missing `Origin` when the token is valid. It only helps scripted HTTP clients, which this project does not have.
+
+### D-080 · Accepted — Rate-limit infrastructure and trusted proxies
+- **Mechanism (D-029):** Rails `rate_limit`, keyed by `request.remote_ip`, stored in `Rails.cache` (Solid Cache in production). A blocked request gets 429 `rate_limited` in the D-078 shape plus a `Retry-After` header with the window length in seconds.
+- **Feature 4 builds the mechanism and the public `GET` tier** (120/min). Each other D-029 limit is applied by the task that creates its endpoint, as a one-line declaration.
+- **Internal-token exemption (D-045):** a request whose `X-Internal-Token` matches `API_INTERNAL_TOKEN` (constant-time comparison) skips **only** the public tier. A wrong token is treated as an ordinary request, not an error. An unset or empty configured token never matches.
+- **Not rate limited:** `GET /api/v1/health` and `/up`, so uptime monitors are never throttled. D-029 lists no limit for them.
+- **Test store:** the test environment uses `:memory_store`, cleared before every example, replacing `:null_store` (which made every limit a no-op).
+- **Trusted proxies (owner's choice):** `TRUSTED_PROXIES`, an optional comma-separated list of IPs or CIDRs, is added to Rails' default trusted proxies. The real Railway values are set at deployment, once they can be verified. Specs prove `remote_ip` honours `X-Forwarded-For` only from a trusted proxy.
+- **Required configuration:** `FRONTEND_ORIGIN` and `API_INTERNAL_TOKEN` are read once at boot and fail loudly when missing, in every environment (the same rule as the web's `server-config.server.ts`). Development reads them from the root `.env`; CI sets test values in `api.yml`.
+- **Rejected alternative for proxies:** deferring all proxy handling to deployment. The rate-limit specs would then never cover proxied requests.
