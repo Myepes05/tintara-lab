@@ -622,3 +622,13 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
   - The chapter's file listings were extracted and compared byte for byte by the agent (27 comparisons).
 - **Process slip disclosed by the agent (R-7):** a `git checkout <file>` used to undo an experiment also discarded uncommitted edits to that file. The agent caught it before committing, re-applied the edits, and documented it as a chapter trap. Nothing wrong reached the branch.
 - **A QA re-check is still required (D-054),** because the round changed application code, test infrastructure and workflows.
+
+### D-076 · Accepted — Feature 3 QA re-check outcome and fix round 2
+- **QA re-check verdict (2026-09-17):** PASS WITH NOTES on `a7ac6bc`. F-1 to F-10 are fixed and verified independently. There are three new findings and none is `blocker` or `major`.
+  - **N-1 (minor):** chapter 03 step 10 says ESLint lists 20 files; the real count is 21.
+  - **N-2 (nit):** chapter 03 §5 says "One line changed" for `ErrorBoundary`; two lines changed.
+  - **N-3 (nit):** the React Router upgrade note does not mention the hand-copied `isRouteErrorResponse` in `root.test.tsx`.
+- **Owner's call:** fix N-1 and N-2 before merging, in fix round 2. The chapter must match real output (D-064, D-067), and the cost is two lines.
+- **N-3** is handled by the orchestrator in the status file's carry-over notes. No agent task.
+- **Verification:** the round touches only chapter 03 and the report, so the orchestrator verifies it with a diff read and `gh pr checks 2` instead of a QA re-check (an exception to D-054's re-check step, limited to text-only rounds with no `blocker` or `major` open).
+- **Prompt:** `prompts/implementation/feature-003-web-skeleton-fix-r2.md`.

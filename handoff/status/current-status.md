@@ -1,6 +1,6 @@
 # Current Status
 
-**Last updated:** 2026-09-17 by the orchestrator (session 1)
+**Last updated:** 2026-10-22 by the orchestrator
 
 ## Current stage: Phase 1 — Foundation · Feature 3 in QA
 
@@ -11,7 +11,7 @@
 | Discovery and planning | Done | Decisions D-000 to D-070 · `plan/master-plan.md` v1 · `CLAUDE.md` · `templates/` |
 | Feature 1 — monorepo bootstrap | **Merged** (`ab52b86`, direct to `main` per D-049) | Verified by the orchestrator, no QA agent (D-061) |
 | Feature 2 — Rails API skeleton | **Merged** (`af4afec`, PR #1) | QA: PASS WITH NOTES, all findings fixed in fix round 1 |
-| Feature 3 — web skeleton | **Fix round 1 done → QA re-check pending** | PR #2, branch `feature/3-web-skeleton` |
+| Feature 3 — web skeleton | **QA re-check: PASS WITH NOTES → fix round 2 (text only) pending** | PR #2, branch `feature/3-web-skeleton` |
 | Learning chapters | 01, 02 merged · 03 in PR #2 | `learning/` (D-064, D-067) |
 
 ## Feature 3 — detail
@@ -26,11 +26,12 @@
 - **Fix round 1 (done, 2026-09-17):** all ten findings fixed; six checks renamed and green (`API RuboCop`, `API RSpec`, `Web ESLint`, `Web TypeScript`, `Web Jest`, `Web Build`); spec `7eb7df3` before `ff41b9a`; 16 tests. Verified by the orchestrator (D-075).
   - New infrastructure disclosed by the agent: a `jest.mock("react-router")` factory in `root.test.tsx` (React Router 8 ships only ES modules), and `pnpm test` running typegen first (accepted as D-073). The CSS mapper is now in use.
   - The agent's open question on testing real router components became **D-074 (accepted)**: a spike before Phase 4, on option (b) with (c) as the fallback.
-- **QA re-check prompt:** `prompts/qa/qa-feature-003-web-skeleton-r1.md`. Waiting for the owner to dispatch it.
+- **QA re-check (2026-09-17): PASS WITH NOTES** on `a7ac6bc`. F-1 to F-10 verified fixed; all six checks green. New: N-1 `minor` (chapter 03 step 10 says 20 linted files, really 21), N-2 and N-3 `nit`. Report: `agent-outputs/qa/qa-feature-003-web-skeleton-r1.md`.
+- **Fix round 2 (D-076):** the owner chose to fix N-1 and N-2 before merging. Text-only, so the orchestrator verifies it with a diff read and `gh pr checks 2`; no QA re-check. Prompt: `prompts/implementation/feature-003-web-skeleton-fix-r2.md`. N-3 is handled in the carry-over notes below.
 
 ## Next
-1. The owner dispatches the Feature 3 QA re-check.
-2. The orchestrator reviews it; another fix round only if it finds a blocker or major.
+1. The owner dispatches Feature 3 fix round 2.
+2. The orchestrator verifies it (diff read: only chapter 03 and the report change; six checks green).
 3. The owner squash-merges PR #2.
 4. Once both workflows have run on `main`: configure the six required status checks with `strict: false` and the D-071 names (D-070). The full command is in the Feature 3 report, updated by the fix round.
 5. Phase 2 begins with Feature 4 (API security baseline).
@@ -42,7 +43,7 @@
 - **Feature 4:** `config/environments/test.rb` uses `:null_store`; rate-limit specs need a real cache store in test.
 - **Phase 4, first loader:** Vite does not load `.env` into `process.env`, so development needs a way to supply `API_INTERNAL_URL` and `API_INTERNAL_TOKEN` (for example `node --env-file`).
 - **Feature 14 or 18:** `root.tsx`'s `ErrorBoundary` still has the template's English text; user-facing strings must be Spanish.
-- **Dependency upkeep:** bump React Router to 8.4.x and `@types/node` once they are past pnpm's release-age window. Node 25+ no longer bundles corepack, so revisit CI and `CLAUDE.md` when upgrading Node.
+- **Dependency upkeep:** bump React Router to 8.4.x and `@types/node` once they are past pnpm's release-age window. On every React Router upgrade, re-check the hand-copied `isRouteErrorResponse` in `apps/web/app/root.test.tsx` against the new version's `dist/production/lib/router/utils.js`, or remove it through the D-074 spike (QA N-3). Node 25+ no longer bundles corepack, so revisit CI and `CLAUDE.md` when upgrading Node.
 - **When real components land:** consider `eslint-plugin-jsx-a11y` (accessibility supports D-019).
 - **Deployment:** pick Railway's Postgres 18 image explicitly; its `:latest` tag resolves to 16 (D-058). Configure the Rails trusted proxies (D-029). Set `RAILS_MASTER_KEY`, or plain environment variables, on Railway.
 - **Brakeman and bundler-audit** are installed but not run in CI; cheap to add to the API lint job once there is real code.
@@ -56,7 +57,7 @@
 ## Counters (D-035, D-053)
 - Last `Feature`: 3 (in review; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 10.
+- Last `docs`: 11.
 
 ## Blockers
 - None.
