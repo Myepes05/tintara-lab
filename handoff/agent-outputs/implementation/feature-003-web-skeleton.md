@@ -1,10 +1,10 @@
 # Implementation Report — Feature 3: create the React Router web skeleton with Jest, ESLint and CI
 
-- **Date:** 2026-09-16 · fix round 1: 2026-09-17
+- **Date:** 2026-09-16 · fix round 1: 2026-09-17 · fix round 2: 2026-10-22
 - **Branch:** `feature/3-web-skeleton`
 - **PR:** https://github.com/Myepes05/tintara-lab/pull/2 (open, not merged)
 - **Status:** Completed
-- **Decisions applied:** D-005, D-018, D-019 (`lang="es"` only, see deviation 4), D-020, D-021, D-032, D-033, D-039, D-045, D-050, D-053, D-055, D-064, D-065, D-066, D-067 · fix round 1: D-050, D-054, D-068, D-070, D-071, D-072
+- **Decisions applied:** D-005, D-018, D-019 (`lang="es"` only, see deviation 4), D-020, D-021, D-032, D-033, D-039, D-045, D-050, D-053, D-055, D-064, D-065, D-066, D-067 · fix round 1: D-050, D-054, D-068, D-070, D-071, D-072 · fix round 2: D-054, D-064, D-067, D-068, D-076
 
 ## Summary
 `apps/web` now holds a React Router 8.3.1 framework-mode app with server-side rendering on. It uses strict TypeScript 5.9.3 and Tailwind CSS 4.3.3, and is managed with pnpm 12.4.2 through corepack (pinned in `packageManager` with its integrity hash). Jest 30 with ts-jest, jsdom and React Testing Library runs 16 tests (12 before fix round 1). ESLint 10 and Prettier 3 pass with zero warnings. The `/` route renders a `SiteShell` component, and its first HTML response already contains the heading and the paragraph. Configuration lives in `app/config/`:
@@ -453,3 +453,121 @@ Checked and fine: the new traps 15–19 refer only to steps that exist. The glos
 ### Suggested follow-ups (fix round 1)
 - **`CLAUDE.md` §7's Web line** still reads correctly (`specs pnpm test`). If you want it to mirror the typecheck wording, it could say that `pnpm test` generates route types first.
 - **Route tests for `home.tsx`** (`meta` title, Spanish text) are left for Phase 4, as the prompt allows. They will hit R-Q1.
+
+## Fix round 2
+
+- **Prompt:** `handoff/prompts/implementation/feature-003-web-skeleton-fix-r2.md`
+- **QA report:** `handoff/agent-outputs/qa/qa-feature-003-web-skeleton-r1.md` (verdict PASS WITH NOTES, reviewed commit `a7ac6bc`)
+- **Decisions:** D-054, D-064, D-067, D-068, D-076
+- **Branch / PR:** `feature/3-web-skeleton`, PR #2, pushed, not merged. Head was `a7ac6bcd210ed90eca4795912d6c0c08b36eab0d` before this round, as the prompt requires.
+- **Scope:** text only, in chapter 03 and this report. No application code, tests or workflows changed, so there is no spec commit (the prompt notes that D-050 covers behaviour, not teaching text). N-3 is out of scope, because the orchestrator handles it.
+
+### Findings and what changed
+| # | Change | Where | Commit |
+|---|---|---|---|
+| N-1 (minor) | "lists 20 files" → "lists 21 files", the number I measured (below) | `handoff/learning/03-web-skeleton.md:1150` (step 10) | `a5e0054` |
+| N-2 (nit) | "One line changed." → "Two lines changed: the `clientEnv` import and the condition." The rest of the paragraph is unchanged. | `handoff/learning/03-web-skeleton.md:1525` (§5, `app/root.tsx`) | `a5e0054` |
+
+### Task 1: ESLint file count, measured
+I ran this from `apps/web` on `a7ac6bc`, after `pnpm install --frozen-lockfile`, and counted the entries in the JSON array with `node`, not by hand:
+```
+$ pnpm exec eslint . --format json > eslint.json      exit 0
+files: 21 errors: 0 warnings: 0
+  app/components/site-shell.test.tsx   app/components/site-shell.tsx   app/config/client-env.ts
+  app/config/env-types.ts              app/config/public-config.test.ts app/config/public-config.ts
+  app/config/server-config.server.ts   app/config/server-config.test.ts app/root.test.tsx
+  app/root.tsx                         app/routes.ts                   app/routes/home.tsx
+  app/vite-env.d.ts                    eslint.config.js                jest.config.js
+  react-router.config.ts               test/setup-jest.ts              test/stubs/asset.ts
+  test/stubs/client-env.ts             test/stubs/style.ts             vite.config.ts
+```
+The new file since the first round is `app/root.test.tsx`, which matches the QA explanation.
+
+### Task 2: `git diff acb3ba3..HEAD -- apps/web/app/root.tsx`
+```diff
+@@ -7,6 +7,7 @@ import {
+   ScrollRestoration,
+ } from "react-router";
+ 
++import { clientEnv } from "~/config/client-env";
+ import type { Route } from "./+types/root";
+ import "./app.css";
+ 
+@@ -43,7 +44,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+       error.status === 404
+         ? "The requested page could not be found."
+         : error.statusText || details;
+-  } else if (import.meta.env.DEV && error && error instanceof Error) {
++  } else if (clientEnv.DEV && error && error instanceof Error) {
+     details = error.message;
+     stack = error.stack;
+   }
+```
+That is one line added (the import) and one line changed (the condition), so two lines changed in total.
+
+### Task 3: other numbers in chapter 03 that describe output
+I searched the chapter with `grep -nE` for numerals and number words next to output-like words (files, tests, suites, lines, blocks, checks, jobs, errors, lists, prints, shows), then checked each match against the branch head:
+
+| Line | Claim | How checked | Result |
+|---|---|---|---|
+| 290 | "All four runs below" | The table under it has four rows | Matches |
+| 394 | "the three stubs" | `ls test/stubs` → `asset.ts`, `client-env.ts`, `style.ts` | Matches |
+| 469 | "the four specs" | `git ls-files 'apps/web/*.test.ts*'` → 4 files | Matches |
+| 711–721 | Step 6's red state: 4 `FAIL` suites, `TS2307` positions `2:34`, `75:46`, `4:8`, `3:27`, `3:27`, and `Test Suites: 4 failed, 4 total` | A scratch copy of HEAD (`git archive`) with `site-shell.tsx`, `client-env.ts`, `public-config.ts` and `server-config.server.ts` removed, then `pnpm test` | Matches, every position and the total. Jest's suite order varies between runs. |
+| 724 | `TS1343` "at `root.tsx:46`" in the PR history | In the task 2 diff, the removed `import.meta.env.DEV` line is line 46 of the old file | Matches |
+| 812 | "three configuration modules" | `client-env.ts`, `public-config.ts`, `server-config.server.ts` (`env-types.ts` holds only types) | Matches |
+| 898 | `client-env.ts(15,14): error TS2559` | This is the quoted output of the labelled *first draft* of the file, not of the file at HEAD (its declaration is on line 19), and it predates both fix rounds. Column 14 matches `export const clientEnv`. | **Left unchanged.** It is historical output of a different file, and a reader is not told to reproduce it. I'm noting it in case the orchestrator wants a different policy. |
+| 984, 1588 | `Test Suites: 4 passed` · `Tests: 16 passed` | `pnpm test` at HEAD → `Test Suites: 4 passed, 4 total` · `Tests: 16 passed, 16 total` | Matches |
+| 1016 | The Tailwind `grep` "prints all three" | `pnpm build`, then the chapter's grep → `.font-semibold`, `.max-w-3xl`, `.text-3xl` | Matches |
+| 1150 | "lists 21 files" (N-1) | Task 1 | Fixed in this round |
+| 1184 | `web.yml` comment: "the same five setup steps" | Every job in `web.yml` has six named steps before its own: checkout, Set up Node, corepack, Locate the pnpm store, Cache the pnpm store, Install dependencies | **Mismatch, not fixed.** See question R2-Q1. The chapter's listing is byte-identical to `web.yml` (QA A.6), so this wording can only change in `web.yml` itself, and this round may not touch `.github/`. |
+| 1327 | "The four jobs" | `web.yml` has `lint`, `typecheck`, `test`, `build` | Matches |
+| 1355 | "delete the three `paths:` lines under `pull_request:`" | `git diff $(git merge-base origin/main HEAD)..HEAD -- .github/workflows/api.yml` removes `paths:` plus two path entries | Matches |
+| 1386 | "two newly trackable files" | Both `.keep` files are named, and the round-one scope check agrees | Matches |
+| 1402, 1602 | `.gitignore:31:*.key` | `sed -n 31p .gitignore` → `*.key` | Matches |
+| 1517 | "the two literal names" | `server-config.server.ts:24` → `["API_INTERNAL_URL", "API_INTERNAL_TOKEN"] as const` | Matches |
+| 1605 | Six check names, all passing | `gh pr checks 2` (below) | Matches |
+
+Also seen but not a chapter number: this report's line 101 says "20 files linted". That is the first round's output on `acb3ba3`, where 20 was correct, so it stays as written.
+
+### Commands run and results
+```
+git switch main && git pull                              Already up to date (untracked apps/web/ only, D-068)
+git switch feature/3-web-skeleton && git pull            Already up to date; HEAD a7ac6bcd210ed90eca4795912d6c0c08b36eab0d
+(apps/web) pnpm install --frozen-lockfile                Done
+(apps/web) pnpm exec eslint . --format json              exit 0; 21 files, 0 errors, 0 warnings
+(apps/web) pnpm test                                     Test Suites: 4 passed, 4 total · Tests: 16 passed, 16 total
+(apps/web) pnpm build                                    exit 0
+python3 edit script (each replacement asserted to occur exactly once)   2 replacements in chapter 03
+git push origin feature/3-web-skeleton                   a7ac6bc..a5e0054
+```
+
+### CI: `gh pr checks 2` on `a5e0054` (the chapter commit)
+```
+API RSpec       pass  1m17s  runs/39899477254
+API RuboCop     pass  51s    runs/39899477254
+Web Build       pass  17s    runs/39899477266
+Web ESLint      pass  19s    runs/39899477266
+Web Jest        pass  25s    runs/39899477266
+Web TypeScript  pass  16s    runs/39899477266
+```
+The commit that adds this section starts a new run. Its result is not recorded here, because this file cannot contain the checks of the commit that creates it. Re-run `gh pr checks 2` on the final head.
+
+### Scope: `git diff --stat a7ac6bc..HEAD`
+```
+ .../implementation/feature-003-web-skeleton.md     | 122 ++++++++++++++++++++-
+ handoff/learning/03-web-skeleton.md                |   4 +-
+ 2 files changed, 122 insertions(+), 4 deletions(-)
+```
+
+### Acceptance criteria (fix round 2)
+- [x] N-1: step 10 states the measured file count (21), and it equals the real `eslint --format json` output
+- [x] N-2: §5 names both changed lines in `root.tsx`
+- [x] Task 3's re-read is listed above
+- [x] `git diff --stat a7ac6bc..HEAD` shows only `handoff/learning/03-web-skeleton.md` and this report
+- [x] The six CI checks pass (`gh pr checks 2` on `a5e0054`; the final head is re-checked after the push, see above)
+- [x] Commits prefixed `Feature 3: fix ...`, pushed to PR #2, not merged
+- [x] Session ends on `main`
+
+### Questions for the owner (fix round 2)
+- **R2-Q1. `web.yml`'s comment says "the same five setup steps", but each job has six** (checkout, Set up Node, corepack, Locate the pnpm store, Cache the pnpm store, Install dependencies). You could read "locate + cache" as one step, or not count the install, but neither reading is written down. Chapter 03 line 1184 quotes the file byte for byte, so the fix belongs in `.github/workflows/web.yml`, which this round may not change. Options: (a) a one-word change to "six" in `web.yml` (and the chapter's listing) in a later round or feature, or (b) leave it, since it is a comment and not command output. Severity, if it were a finding: `nit`.
