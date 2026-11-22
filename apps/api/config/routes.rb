@@ -9,8 +9,13 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       get "health", to: "health#show"
+      get "csrf_token", to: "csrf_tokens#show"
     end
   end
+
+  # Any other path or method under /api is a JSON 404 (D-078). Keep this below
+  # every /api route: the first match wins.
+  match "api(/*unmatched)", to: "api/errors#not_found", via: :all, format: false
 
   # Defines the root path route ("/")
   # root "posts#index"

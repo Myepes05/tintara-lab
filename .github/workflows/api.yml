@@ -54,6 +54,9 @@ jobs:
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
       RAILS_ENV: test
+      # Required at boot (D-080). Test values, not secrets.
+      FRONTEND_ORIGIN: http://localhost:5173
+      API_INTERNAL_TOKEN: tintara_ci_internal_token
 
     services:
       postgres:

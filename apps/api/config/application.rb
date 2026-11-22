@@ -25,6 +25,8 @@ if defined?(Dotenv::Rails)
   Dotenv::Rails.files = [ File.expand_path("../../../.env", __dir__) ]
 end
 
+require_relative "../lib/api_security"
+
 module Api
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
@@ -33,7 +35,8 @@ module Api
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    # api_security is required by hand above, because it is needed during boot.
+    config.autoload_lib(ignore: %w[assets tasks api_security api_security.rb])
 
     # Configuration for the application, engines, and railties goes here.
     #
@@ -47,5 +50,21 @@ module Api
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # Read once, and stop the boot if a required variable is missing (D-080).
+    # dotenv has already loaded the root .env by the time this line runs.
+    ApiSecurity.config = ApiSecurity::Configuration.from_env(ENV)
+
+    # API mode leaves cookies and the session out; put them back (D-079).
+    config.session_store :cookie_store, **ApiSecurity::SessionCookie.options(Rails.env)
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use config.session_store, config.session_options
+
+    # Client IP (D-081): one trusted list, used by RemoteIp and by the middleware
+    # that removes spoofable forwarding headers in front of it.
+    config.action_dispatch.trusted_proxies = ApiSecurity::TrustedProxies
+    config.middleware.insert_before ActionDispatch::RemoteIp,
+                                    ApiSecurity::ClientIpSanitizer,
+                                    ApiSecurity::TrustedProxies
   end
 end
