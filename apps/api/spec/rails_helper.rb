@@ -45,6 +45,10 @@ RSpec.configure do |config|
   # instead of true.
   config.use_transactional_fixtures = true
 
+  # Rate-limit counters live in the cache, so every example starts with an empty
+  # one (D-080). Transactional fixtures do not roll back a cache.
+  config.before { Rails.cache.clear }
+
   # You can uncomment this line to turn off ActiveRecord support entirely.
   # config.use_active_record = false
 
