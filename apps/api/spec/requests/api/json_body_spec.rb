@@ -24,7 +24,7 @@ RSpec.describe "JSON decoding", type: :request do
 
   it "reads back an encrypted cookie, which is how the session is stored" do
     jar = ActionDispatch::Request.new(Rails.application.env_config.merge(Rack::MockRequest.env_for("/"))).cookie_jar
-    jar.encrypted[:example] = { "stored" => true }
+    jar.encrypted[:example] = { value: { "stored" => true } } # a bare Hash would be read as options
 
     expect(jar.encrypted[:example]).to eq("stored" => true)
   end
