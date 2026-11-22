@@ -661,6 +661,7 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
 - **Rejected alternative:** accepting a missing `Origin` when the token is valid. It only helps scripted HTTP clients, which this project does not have.
 
 ### D-080 · Accepted — Rate-limit infrastructure and trusted proxies
+- **Amended by D-081 (2026-11-22):** `request.remote_ip` is safe as a key only after the forwarding headers are sanitized, each tier shares one scope, and `Retry-After` is exposed through CORS.
 - **Mechanism (D-029):** Rails `rate_limit`, keyed by `request.remote_ip`, stored in `Rails.cache` (Solid Cache in production). A blocked request gets 429 `rate_limited` in the D-078 shape plus a `Retry-After` header with the window length in seconds.
 - **Feature 4 builds the mechanism and the public `GET` tier** (120/min). Each other D-029 limit is applied by the task that creates its endpoint, as a one-line declaration.
 - **Internal-token exemption (D-045):** a request whose `X-Internal-Token` matches `API_INTERNAL_TOKEN` (constant-time comparison) skips **only** the public tier. A wrong token is treated as an ordinary request, not an error. An unset or empty configured token never matches.
@@ -669,3 +670,21 @@ The orchestrator reviewed the Feature 3 report's ten deviations and accepts all 
 - **Trusted proxies (owner's choice):** `TRUSTED_PROXIES`, an optional comma-separated list of IPs or CIDRs, is added to Rails' default trusted proxies. The real Railway values are set at deployment, once they can be verified. Specs prove `remote_ip` honours `X-Forwarded-For` only from a trusted proxy.
 - **Required configuration:** `FRONTEND_ORIGIN` and `API_INTERNAL_TOKEN` are read once at boot and fail loudly when missing, in every environment (the same rule as the web's `server-config.server.ts`). Development reads them from the root `.env`; CI sets test values in `api.yml`.
 - **Rejected alternative for proxies:** deferring all proxy handling to deployment. The rate-limit specs would then never cover proxied requests.
+
+## Feature 4 pre-dispatch review (orchestrator and owner, 2026-11-22)
+
+### D-081 · Accepted — Client IP sanitization, shared rate-limit scopes, readable `Retry-After` (amends D-080)
+- **Trigger:** before Feature 4 was dispatched, the orchestrator tested D-080's assumptions against the installed gems (Rails 8.1.3.1, Rack 3.2.7), outside the app:
+  - `remote_ip` accepts `X-Forwarded-For`, `Client-IP` and `Forwarded` from **any** peer. A client already blocked at 120 requests got 1,000 of 1,000 more through by rotating `X-Forwarded-For`.
+  - Rack prefers `Forwarded` to `X-Forwarded-For`, so a client can override the address that a trusted proxy reported.
+  - Conflicting `Client-IP` and `X-Forwarded-For` headers raise `IpSpoofAttackError`.
+  - `rate_limit` scopes its counter to the controller path by default, so two controllers give one IP two separate allowances.
+- **1. Client IP:** a middleware placed before `ActionDispatch::RemoteIp` always removes `Client-IP` and `Forwarded`, and removes `X-Forwarded-For` unless the immediate peer (`REMOTE_ADDR`) is in the effective trusted list (Rails' defaults plus `TRUSTED_PROXIES`). `remote_ip` stays the key. A prototype of this rule returned the correct IP in all nine header and peer combinations tested.
+- **2. Shared scope:** each tier that covers several controllers (public `GET`, authenticated admin) has one explicit scope, so D-029's values are per IP across the whole tier.
+- **3. CORS:** `Retry-After` is exposed, because browser JavaScript can't otherwise read it on a cross-origin response.
+- **4. Accepted risk, limits fail open:** on a transient database error (adapter timeout, connection not established, deadlock, lock wait timeout, query canceled, statement timeout), Solid Cache 1.0.10's `increment` logs, reports and returns `nil`, and `rate_limit` then allows the request. Found by reading both gems' source, not reproduced. Accepted for now; revisit in the Feature 24 sweep.
+- **Deployment check (D-036):** confirm on Railway which peer addresses Rails sees, and that the proxy appends to or overwrites `X-Forwarded-For`. Point 1 is safe behind a proxy only if it does.
+- **Rejected alternatives:**
+  - `trusted_proxies` alone: it only controls which addresses are skipped within the headers, not whether the peer may send them.
+  - Keying on `REMOTE_ADDR`: behind Railway's proxy, all visitors would share the proxy's counter.
+  - Failing closed on cache errors: a short database fault would block requests that could otherwise succeed, and it needs custom code around `rate_limit`.

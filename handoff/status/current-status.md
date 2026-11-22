@@ -1,8 +1,8 @@
 # Current Status
 
-**Last updated:** 2026-10-22 by the orchestrator
+**Last updated:** 2026-11-22 by the orchestrator
 
-## Current stage: Phase 2 — API security · Feature 4 prompt ready
+## Current stage: Phase 2 — API security · Feature 4 prompt revised (D-081) and ready
 
 ## Where things stand
 
@@ -32,7 +32,7 @@
 - **Required status checks are live on `main` (D-070, D-077):** `strict: false`, the six D-071 names, tied to GitHub Actions (app `15368`). Applied by the owner on 2026-10-22; other protection fields unchanged.
 
 ## Next
-1. The owner dispatches Feature 4 (API security baseline). Prompt: `prompts/implementation/feature-004-api-security-baseline.md`; design choices in D-078 (error format), D-079 (CSRF, Origin, session cookie) and D-080 (rate limits, trusted proxies).
+1. The owner dispatches Feature 4 (API security baseline). Prompt: `prompts/implementation/feature-004-api-security-baseline.md`; design choices in D-078 (error format), D-079 (CSRF, Origin, session cookie) and D-080 (rate limits, trusted proxies), amended by D-081 after the pre-dispatch review (spoofable client IP, per-controller counters, unreadable `Retry-After`).
 2. The orchestrator reviews the PR and writes the Feature 4 QA prompt.
 3. The D-074 spike (Jest with real React Router components) runs before any Phase 4 prompt.
 
@@ -44,8 +44,10 @@
 - **Phase 4, first loader:** Vite does not load `.env` into `process.env`, so development needs a way to supply `API_INTERNAL_URL` and `API_INTERNAL_TOKEN` (for example `node --env-file`).
 - **Feature 14 or 18:** `root.tsx`'s `ErrorBoundary` still has the template's English text; user-facing strings must be Spanish.
 - **Dependency upkeep:** bump React Router to 8.4.x and `@types/node` once they are past pnpm's release-age window. On every React Router upgrade, re-check the hand-copied `isRouteErrorResponse` in `apps/web/app/root.test.tsx` against the new version's `dist/production/lib/router/utils.js`, or remove it through the D-074 spike (QA N-3). Node 25+ no longer bundles corepack, so revisit CI and `CLAUDE.md` when upgrading Node.
+- **Feature 5 onward:** specs for per-IP limits set an untrusted `REMOTE_ADDR`; a tier covering several controllers uses one shared scope (D-081).
+- **Feature 24:** revisit rate limits failing open on transient database errors (D-081, accepted risk).
 - **When real components land:** consider `eslint-plugin-jsx-a11y` (accessibility supports D-019).
-- **Deployment:** pick Railway's Postgres 18 image explicitly; its `:latest` tag resolves to 16 (D-058). Configure the Rails trusted proxies (D-029). Set `RAILS_MASTER_KEY`, or plain environment variables, on Railway.
+- **Deployment:** pick Railway's Postgres 18 image explicitly; its `:latest` tag resolves to 16 (D-058). Configure the Rails trusted proxies (D-029) and verify that Railway's proxy appends to or overwrites `X-Forwarded-For` (D-081). Set `RAILS_MASTER_KEY`, or plain environment variables, on Railway.
 - **Next PR that touches `web.yml`:** its comment says "the same five setup steps" but each job has six; fix the file and chapter 03's listing together (D-077).
 - **Brakeman and bundler-audit** are installed but not run in CI; cheap to add to the API lint job once there is real code.
 
@@ -58,7 +60,7 @@
 ## Counters (D-035, D-053)
 - Last `Feature`: 3 (merged; `Feature 4` is next).
 - Last `fix`: none (next is `fix 1`).
-- Last `docs`: 13.
+- Last `docs`: 14.
 
 ## Blockers
 - None.
