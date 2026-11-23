@@ -20,7 +20,9 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
-  config.cache_store = :null_store
+  # A store that really counts, for rate-limit specs (D-080). rails_helper
+  # clears it before every example.
+  config.cache_store = :memory_store
 
   # Jobs run through the Active Job test adapter, so specs never need a
   # Solid Queue worker (D-052).
@@ -29,8 +31,10 @@ Rails.application.configure do
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 
-  # Disable request forgery protection in test environment.
-  config.action_controller.allow_forgery_protection = false
+  # Forgery protection stays on in tests (D-079): specs send a real token with
+  # the csrf_headers helper. This line only reaches ActionController::Base; for
+  # the API's controllers, RequestProtection turns it on.
+  config.action_controller.allow_forgery_protection = true
 
   # Tell Action Mailer not to deliver emails to the real world.
   # The :test delivery method accumulates sent emails in the
