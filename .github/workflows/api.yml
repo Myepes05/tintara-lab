@@ -26,7 +26,9 @@ defaults:
 jobs:
   lint:
     name: API RuboCop
-    runs-on: ubuntu-latest
+    # ubuntu-24.04, not ubuntu-latest: ubuntu-latest became Ubuntu 26.04 in
+    # November 2026, and setup-ruby has no Ruby 3.4.3 build for it (D-028).
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
@@ -44,7 +46,7 @@ jobs:
 
   test:
     name: API RSpec
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     # Throwaway credentials for the service container below. They exist only
     # for the lifetime of this job and grant access to nothing else.
